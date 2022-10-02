@@ -1,0 +1,75 @@
+---
+title: "Laboratorio 1"
+author: "Joshua Cervantes/Moisés Monge"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+mail: "joshua.cervantes@ucr.ac.cr"
+linkedin: ""
+twitter: ""
+github: "afr063426"
+
+home: ""
+# !!! You need to provide a logo image here !!! Or just delete the field for no logo
+logo: ""
+output:
+  prettydoc::html_pretty:
+      theme: cayman
+      highlight: github
+      math: katex
+      toc: true
+      toc_depth: 2
+      code_menu: true
+
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, width = 60)
+## Packages that are needed
+library(devtools)
+library(prettydoc)
+library(rmarkdown)
+library(tidyverse)
+library(kableExtra)
+library(jcolors)
+library(xtable)
+options(scipen = 999, digits = 5, OutDec = ",")
+
+
+
+#We comment beacuse only is needed to create the table
+#used with all the stations
+#---------------------------------------
+# We write all the tables
+
+#list_documents <- unlist(list.files(path="PRSA_Data_20130301-20170228",all.file=TRUE,full.names=TRUE))[-(1:2)]
+
+#We proceed to join all in an unique file
+#data <- read.csv(list_documents[1])
+#for(i in list_documents[-1]){
+#    aux <- read.csv(i)
+#    data <- rbind(data,aux)
+#}
+
+#We write a document with all the stations
+#write.csv(data, "datos.csv")
+#-----------------------------------------
+#We read the documento
+data <- read.csv("datos.csv")
+```
+
+
+```{r Table_Head}
+#We create a table in format latex for the work
+
+head_first_5 <- head(data, n=5)
+
+print(xtable(head_first_5, type = "latex", tabular.environment="longtable"),
+    include.rownames=FALSE, file = "head_5.tex")
+
+```
+
+
+```{r Summary_5}
+#We create the summary of five numbers for 
+
+```
