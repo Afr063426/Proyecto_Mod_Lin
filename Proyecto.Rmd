@@ -71,5 +71,49 @@ print(xtable(head_first_5, type = "latex", tabular.environment="longtable"),
 
 ```{r Summary_5}
 #We create the summary of five numbers for 
+#We select only the numeric kind
+numeric_cols <- data%>%select_if(is.numeric)
+
+#We select the first numeric that is considered important
+n_col_PM2.5 <- which(colnames(numeric_cols)=="PM2.5")
+
+#We select the last numeric that is considered important
+n_col_WSPM <- which(colnames(numeric_cols)=="WSPM")
+
+
+names_cols <- colnames(numeric_cols)
+
+summary_5_number <- data.frame("Variable" = character(),
+                "Mínimo"=numeric(), 
+                "Q1"=numeric(),
+                "Mediana"=numeric(),
+                "Q3"=numeric(),
+                "Máximo"=numeric()
+                )
+
+
+#Summary 5 numberts taking information of twelve stations
+summary_data_frame <- function(dat){
+    quantiles <- quantile(dat, na.rm = TRUE)
+    quantiles <- data.frame("Mínimo"=quantiles[1], 
+                "Q1"=quantiles[2],
+                "Mediana"=quantiles[3],
+                "Q3"=quantiles[4],
+                "Máximo"=quantiles[5])
+    return(quantiles)
+}
+
+
+
+
+for(i in n_col_PM2.5:n_col_WSPM){
+    aux <- cbind("Variable" = names_cols[i], summary_data_frame(numeric_cols[i]))
+    summary_5_number <- rbind(summary_5_number, aux)
+}
+#Data frame to long format
+
+
+print(xtable(summary_5_number, type = "latex", tabular.environment="longtable"),
+    include.rownames=FALSE, file = "summary_5_number.tex")
 
 ```
