@@ -55,6 +55,8 @@ options(scipen = 999, digits = 5, OutDec = ",")
 #-----------------------------------------
 #We read the documento
 data <- read.csv("datos.csv")
+
+stations <- unique(data$station)
 ```
 
 
@@ -115,5 +117,23 @@ for(i in n_col_PM2.5:n_col_WSPM){
 
 print(xtable(summary_5_number, type = "latex", tabular.environment="longtable"),
     include.rownames=FALSE, file = "summary_5_number.tex")
+
+
+#We create a summary of five numbers for PM2.5 grouping by station
+
+summary_2.5_station <- data.frame("Estación" = character(),
+                "Mínimo"=numeric(), 
+                "Q1"=numeric(),
+                "Mediana"=numeric(),
+                "Q3"=numeric(),
+                "Máximo"=numeric()
+                )
+for(i in stations){
+    PM2.5_aux <- data%>%filter(station == i)%>%select(PM2.5)
+    aux <- cbind("Estación" = i, summary_data_frame(PM2.5_aux))
+    summary_2.5_station <- rbind(summary_2.5_station, aux)
+}
+print(xtable(summary_2.5_station, type = "latex", tabular.environment="longtable"),
+    include.rownames=FALSE, file = "summary_2.5_station.tex")
 
 ```
