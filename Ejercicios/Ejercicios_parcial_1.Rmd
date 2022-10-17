@@ -30,3 +30,157 @@ data(crawl)
 #We create a plot of the data
 plot(crawl)
 ```
+1. Plot the data. Which assumptions, if any, appear to be violated?
+1- From the plot Tempreature/Crawling we 
+could think there will not be linearity. 
+2- Suitability, the same model doesn't seem
+suitable for all the data.
+
+2. Explain why a weighted regression model is appropriate for the data.
+A weighted model regression can be appropiated
+because in each mont there is different number 
+of subject of study. Then, it is a good idea to 
+set more weight to some observations.
+
+3. Fit a weighted linear regression model to the data, and interpret the
+regression coefficients.
+
+```{r}
+#We add the weight to the data 
+subjects_study <-sum(crawl$n)
+crawl <- crawl%>%mutate("Weight"=n/subjects_study)
+
+#We fit the model
+lm_ex_16 <- lm(crawling ~ temperature,weights=Weight,data=crawl)
+
+#We print the result
+print(lm_ex_16)
+```
+
+We have that temperature is `r coefficients(lm_ex_16)[2]`, thus we can say 
+that an increase in one unit of the average tempreature decrease `r coefficients(lm_ex_15)[2]`
+the mean age when the crawling started. For the intercept we can say that the 
+mean age base to begin crawling is `r coefficients(lm_ex_16)[1]`.
+
+
+4. Formally test the hypothesis proposed by the researchers
+```{r}
+#We test the significance of the variable temperature in the model
+#using summary
+test_t_ex_16 <- coef(summary(lm_ex_16),5)
+```
+
+We have that p-value for temperature is `r test_t_ex_16[8]`, so we affirm that temperature
+is statistically significant.
+
+
+5. Find a 90% confidence interval for the slope of the fitted line, and
+interpret.
+
+```{r}
+#Confidence interval for beta
+confint(lm_ex_16,level=0.9)
+```
+We can say that from 100 experiments
+we can expected that 95 our interval 
+contain the value of $\beta$
+
+
+6. Fit the unweighted regression model, then plot both regression lines on
+a plot of the data. Comment on the differences.
+```{r}
+#We fit the model unweighted
+lm_ex_16_un <- lm(crawling ~ temperature,data=crawl)
+plot(crawl$temperature,crawl$crawling)
+abline(lm_ex_16_un)
+abline(lm_ex_16,col="red")
+```
+
+We see watch that the weighted model (red line)
+is more adjusted where theres is more points.
+We can think that it is related with the weight
+because between the upper values of crawling there are the
+observations with more participants.
+
+7. Compute the 95% confidence intervals for the fitted values from the
+weighted regression line, and also plot these.
+```{r}
+x<-data.frame("temperature"=0:75)
+#We do a prediction with the model
+predict_ex_16 <- predict(lm_ex_16,
+                newdata = x,se.fit=TRUE)
+
+t_quantile <- qt(df=lm_ex_16$df,p=0.975)
+supperior_ex_16 <- predict_ex_16$fit + t_quantile*predict_ex_16$se.fit
+inferior_ex_16 <- predict_ex_16$fit - t_quantile*predict_ex_16$se.fit
+
+lm_ex_16_un <- lm(crawling ~ temperature,data=crawl)
+plot(crawl$temperature,crawl$crawling)
+lines(supperior_ex_16)
+lines(inferior_ex_16)
+abline(lm_ex_16_un)
+abline(lm_ex_16,col="red")
+
+```
+
+8. Interpret the model.
+It is interpreted that the model there is
+a linear relation between the increase in the
+average temperature and the decrease in average 
+age of crawling. The variable is statistically 
+significant. 
+
+
+
+3.15. A study of babies [4] hypothesized that babies would take longer to
+learn to crawl in colder months because the extra clothing restricts their
+movement (data set: crawl). The data and a fuller description are given in
+Problem 2.16 (p. 87). In that problem, a linear regression model was fitted
+to the data.
+1. Perform a diagnostic analysis of the fitted linear regression model.
+
+
+```{r}
+#We use standarized residuals
+#We test linearity
+residuals_lm_ex_16 <- rstandard(lm_ex_16)
+scatter.smooth(residuals_lm_ex_16~crawl$temperature,col="grey",
+las=1, ylab="Residuals", xlab="Temperature (F°)")
+```
+The model is poor. It doesn't show linearity.
+
+```{r}
+#We use standarized residuals
+scatter.smooth( residuals_lm_ex_16 ~ fitted( lm_ex_16 ), col="grey",
+las=1, ylab="Standardized residuals", xlab="Fitted values")
+```
+There is a no linear pattern.
+
+```{r}
+qqnorm(residuals_lm_ex_16,las=1)
+qqline(residuals_lm_ex_16)
+```
+
+We can think the the distribution is 
+left skewed.
+
+
+```{r}
+#We make an acf to watch the 
+#independence
+acf(residuals_lm_ex_16)
+
+```
+
+We can say that observations are independent.
+
+```{r}
+plot(residuals_lm_ex_16[-length(residuals_lm_ex_16)],residuals_lm_ex_16[-1])
+```
+
+
+2. Identify any influential observations or outliers.
+
+3. Suppose some of the babies were twins. Which assumption would be
+violated by the inclusion of these babies in the study? Do you think this
+would have practical implications?
