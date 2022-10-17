@@ -32,8 +32,8 @@ library(tidyverse)
 library(kableExtra)
 library(jcolors)
 library(xtable)
-options(scipen = 999, digits = 5, OutDec = ",")
-
+options(scipen = 999, digits = 5)
+#options(scipen = 999, digits = 5, OutDec = ",")
 
 
 #We comment beacuse only is needed to create the table
@@ -55,7 +55,8 @@ options(scipen = 999, digits = 5, OutDec = ",")
 #-----------------------------------------
 #We read the documento
 data <- read.csv("datos.csv")
-
+data<-data[-1]
+data$station<-as.factor(data$station)
 stations <- unique(data$station)
 ```
 
@@ -136,4 +137,81 @@ for(i in stations){
 print(xtable(summary_2.5_station, type = "latex", tabular.environment="longtable"),
     include.rownames=FALSE, file = "summary_2.5_station.tex")
 
+#Se elimina lo que no se va a volver a usar
+rm(aux,head_first_5,numeric_cols,PM2.5_aux,summary_2.5_station,summary_5_number, i,k,n_col_PM2.5,n_col_WSPM,
+   names_cols,intervalos,stations)
 ```
+
+
+
+
+```{r}
+#Frecuencia de lluvia
+Frecuencia_lluvia<-data%>%select(RAIN,station)
+
+#Se calcula la cantidad de clases que deberían haber
+k<-nclass.Sturges(Frecuencia_lluvia$RAIN)
+
+#Se contruyen los intervalos
+intervalos<-cut(Frecuencia_lluvia$RAIN,breaks = seq(min(Frecuencia_lluvia$RAIN, na.rm = T),max(Frecuencia_lluvia$RAIN, na.rm = T),(max(Frecuencia_lluvia$RAIN, na.rm = T)-min(Frecuencia_lluvia$RAIN, na.rm = T))/k),right = F, na.rm = T, include.lowest = TRUE)
+
+#Se le adjuntan los intervalos a la tabla que tenemos de anomalia y de region
+Frecuencia_lluvia<-Frecuencia_lluvia%>%mutate(IntervaloLluvia=intervalos)
+
+#Se genera la tabla de frecuencias
+
+FA<-table(Frecuencia_lluvia$IntervaloLluvia,Frecuencia_lluvia$station)
+
+#Se coloca la matriz en un Data Frame
+FA<-as.data.frame(FA)
+FA<-FA%>%spread(Var2,Freq)
+
+FA<-rbind(FA, c("Total",colSums(Filter(is.numeric, FA))))
+
+#Se contruye la tabla que va ser pasada a latex
+print(xtable(FA, type = "latex", tabular.environment="longtable"),include.rownames=FALSE, file = "frecuenciaLluvia.tex")
+
+#Se elimina la tabla que tiene las frecuencias segun temperatura y anomalia
+rm(FA,Frecuencia_lluvia,intervalos)
+
+
+
+```
+
+```{r}
+#Frecuencia de PM2
+Frecuencia_PM2.5<-data%>%select(PM2.5,station)
+
+#Se calcula la cantidad de clases que deberían haber
+k<-nclass.Sturges(Frecuencia_PM2.5$PM2.5)
+
+#Se contruyen los intervalos
+intervalos<-cut(Frecuencia_PM2.5$PM2.5,breaks = seq(min(Frecuencia_PM2.5$PM2.5, na.rm = T),max(Frecuencia_PM2.5$PM2.5, na.rm = T),(max(Frecuencia_PM2.5$PM2.5, na.rm = T)-min(Frecuencia_PM2.5$PM2.5, na.rm = T))/k),right = F, na.rm = T, include.lowest = TRUE)
+
+#Se le adjuntan los intervalos a la tabla que tenemos de anomalia y de region
+Frecuencia_PM2.5<-Frecuencia_PM2.5%>%mutate(IntervaloPM2=intervalos)
+
+#Se genera la tabla de frecuencias
+
+FA<-table(Frecuencia_PM2.5$IntervaloPM2,Frecuencia_PM2.5$station)
+#FA<-prop.table(FA)
+#Se coloca la matriz en un Data Frame
+FA<-as.data.frame(FA)
+FA<-FA%>%spread(Var2,Freq)
+FA<-rbind(FA, c("Total",colSums(Filter(is.numeric, FA))))
+
+
+#Se contruye la tabla que va ser pasada a latex
+print(xtable(FA, type = "latex", tabular.environment="longtable"),include.rownames=FALSE, file = "frecuenciasPM2.tex")
+
+#Se elimina la tabla que tiene las frecuencias segun temperatura y anomalia
+rm(FA,Frecuencia_PM2.5,intervalos)
+
+
+
+```
+
+
+
+
+
