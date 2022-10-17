@@ -1,0 +1,32 @@
+Ejercicios base examen 2.16, 3.15, 5.26, 6.10, 7.4, 8.11, 9.10, 9.14, 10.11 y 10.16
+
+
+```{r}
+#We load the packages that a required to solve the exercises
+library(MASS)
+library(tidyverse)
+
+
+```
+
+
+2.16. A study of babies [1] hypothesized that babies would take longer to
+learn to crawl in colder months because the extra clothing restricts their
+movement. From 1988–1991, the babies’ first crawling age and the average
+monthly temperature six months after birth (when “infants presumably enter the window of locomotor readiness”; p. 72) were recorded. The parents
+reported the birth month, and age when their baby first crept or crawled a
+distance of four feet in one minute. Data were collected at the University of
+Denver Infant Study Center on 208 boys and 206 girls, and summarized by
+the birth month (Table 2.10; data set: crawl).
+
+
+```{r}
+#We load the package farway that contain the dataset
+library(faraway)
+
+#This is the data
+data(crawl)
+
+#We create a plot of the data
+plot(crawl)
+```
