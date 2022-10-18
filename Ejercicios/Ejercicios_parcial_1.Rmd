@@ -180,7 +180,80 @@ plot(residuals_lm_ex_16[-length(residuals_lm_ex_16)],residuals_lm_ex_16[-1])
 
 
 2. Identify any influential observations or outliers.
-
+```{r}
+#Identify the influential observations only using a function
+measure_influence_ex_16 <- influence.measures(lm_ex_16)
+colSums(measure_influence_ex_16$is.inf)
+plot(lm_ex_16)
+```
 3. Suppose some of the babies were twins. Which assumption would be
 violated by the inclusion of these babies in the study? Do you think this
 would have practical implications?
+
+There is a violation to the assumption that observations are independent.
+
+
+
+5.25. Children were asked to build towers as high as they could out of cubical
+and cylindrical blocks [2, 9]. The number of blocks used and the time taken
+were recorded (Table 2.12; data set: blocks). In this problem, only consider
+the number of blocks used y and the age of the child x.
+
+```{r}
+#We load the data
+library(GLMsData)
+data(blocks)
+#We generate the plot
+#plot(blocks$Age,blocks$Number)
+plot(jitter(Number)~Age, data=blocks)
+
+
+par(mfrow=c(1, 2))
+plot( Number~cut(Age, 3), data=blocks)
+```
+
+What probability distribution is appropriate?
+R/ We can see that we have a count of the number
+of blocks that child used. 
+
+How are the explanatory variables related to the mean of the response
+μ?
+R/ We can notice that the variance increase
+with the increase in the mean.
+
+Then we can think in a Poisson GLM.
+
+
+
+
+6.10. Children were asked to build towers as high as they could out of cubical
+and cylindrical blocks [3, 6]. The number of blocks used and the time taken
+were recorded (data set: blocks). In this problem, only consider the number
+of blocks used y and the age of the child x. In Problem 5.25, a glm was
+proposed for these data.
+
+
+1. Fit this glm using r, and write down the fitted model.
+```{r}
+#We use the data from the exercise 5.25
+glm_ex_6.10 <- glm(Number~Age,family=poisson(),data=blocks)
+
+```
+
+The model is
+\[
+\log(\mu)=`r coef(glm_ex_6.10)[1]`+`r coef(glm_ex_6.10)[2]` x_{1}
+\]
+
+2. Determine the standard error for each regression parameter.
+```{r}
+#We use the summary to have the std error
+coef(summary(glm_ex_6.10))
+
+```
+3. Compute the residual deviance.
+```{r}
+#We estimate the residual deviance
+deviance(glm_ex_6.10)
+
+```
