@@ -521,15 +521,32 @@ We don't see influential observations.
 ```
 5. Interpret the fitted model.
 
-Given what we are saying is that given a characteristic of the person then 
+Given what we are saying is that given the state and the party then there is a possible multiplicative
+proportion of women.
 
 
 6. Estimate and interpret the odds of a female candidate running for the
 Conservative and Labour parties. Then compute the odds ratio of the
 Conservative party fielding a female candidate to the odds of the Labour
 party fielding a female candidate.
+```{r}
+exp(coef(glm_ex_9.10))
+labour <-grepl("Labour",names(coef(glm_ex_9.10)))
+exp(coef(glm_ex_9.10)[labour])
+```
+This implies that in case that we have Labour party the probability to have a woman is 2.5
+greater.
+```{r}
+exp(coef(glm_ex_6.10)[1])
+#Odds ratio
+exp(coef(glm_ex_9.10)[labour])/exp(coef(glm_ex_6.10)[1])
+```
+
 7. Determine if the saddlepoint approximation is likely to be suitable for
 these data.
+
+
+No
 
 9.14 In Example 9.4, data [3] were introduced regarding the germination
 of seeds, using two types of seeds and two types of root stocks (Table 9.3).
@@ -538,15 +555,29 @@ individual seed germinates or not (data set: germBin).
 1. Fit the equivalent model to that fitted in Example 9.4, but using data
 prepared as in the data file germBin. This model is based on using a
 Bernoulli distribution.
+```{r}
+data(germBin)
+data(germ)
+glm_ex_9.14 <- glm(Result~Seeds+Extract,family = binomial(),data=germBin)
+glm_exa_9.4 <- glm(Germ/Total ~ Seeds + Extract, family=binomial(),
+                data=germ, weights = Total)
+printCoefmat(coef(summary(glm_ex_9.14)))
+```
 2. Show that both the Bernoulli and binomial glms produce the same values
 for the parameter estimates and standard errors.
+Comparing with the example 9.4 that coefficients are equal.
+
 3. Show that the two models produce different values for the residual deviance, but the same values for the deviance.
+```{r}
+resid_dev_ex_9.14 <- deviance(glm_ex_9.14)
+
+```
 4. Show that the two models produce similar results from the sequential
 likelihood-ratio tests.
 5. Compare the log-likelihoods for the binomial and Bernoulli distributions.
 Comment.
 6. Explain why overdispersion cannot be detected in the Bernoulli model.
-
+There is no concept of residual variabilty, and goodness-of-fit test in this case.
 
 10.11 
 0.11. The number of deaths for 1969–1973 (1969–1972 for Belgium) due to
