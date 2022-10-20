@@ -562,10 +562,14 @@ Bernoulli distribution.
 ```{r}
 data(germBin)
 data(germ)
-glm_ex_9.14 <- glm(Result~Seeds+Extract,family = binomial(),data=germBin)
+germBin <-as.data.frame(germBin)
+
+
+glm_ex_9.14 <- glm(relevel(Result,ref="NotGerm")~Seeds+Extract,family = binomial(),data=germBin)
 glm_exa_9.4 <- glm(Germ/Total ~ Seeds + Extract, family=binomial(),
                 data=germ, weights = Total)
 printCoefmat(coef(summary(glm_ex_9.14)))
+printCoefmat(coef(summary(glm_exa_9.4)))
 ```
 2. Show that both the Bernoulli and binomial glms produce the same values
 for the parameter estimates and standard errors.
@@ -573,20 +577,42 @@ Comparing with the example 9.4 that coefficients are equal.
 
 3. Show that the two models produce different values for the residual deviance, but the same values for the deviance.
 ```{r}
-resid_dev_ex_9.14 <- deviance(glm_ex_9.14)
+(resid_dev_ex_9.14 <- deviance(glm_ex_9.14))
+(resid_dev_exa_9.4 <- deviance(glm_exa_9.4))
+
+glm_ex_9.14$null.deviance-resid_dev_ex_9.14
+glm_exa_9.4$null.deviance-resid_dev_exa_9.4
 
 ```
 4. Show that the two models produce similar results from the sequential
 likelihood-ratio tests.
+```{r}
+anova(glm_ex_9.14,test="Chisq")
+anova(glm_exa_9.4,test="Chisq")
+
+```
+
+
 5. Compare the log-likelihoods for the binomial and Bernoulli distributions.
 Comment.
+\textcolor{red}{In progress}
+
+
 6. Explain why overdispersion cannot be detected in the Bernoulli model.
+
 There is no concept of residual variabilty, and goodness-of-fit test in this case.
 
 10.11 
 0.11. The number of deaths for 1969–1973 (1969–1972 for Belgium) due to
 cervical cancer is tabulated (Table 10.14; data set: cervical) by age group
 for four different countries [19, 38].
+
+```{r}
+
+
+```
+
+
 1. Plot the data, and discuss any prominent features.
 2. Explain why an offset is useful when fitting a glm to the data.
 3. Fit a Poisson glm with Age and Country as explanatory variables. 
@@ -606,13 +632,91 @@ measurements). Then the herbivores were removed, and bird counts recorded
 again (the ‘after’ measurements). The measurements are the total number of
 understorey-foraging birds observed in three 20-min surveys of 2 ha quadrats.
 1. Plot the data, and explain the important features.
+```{r}
+data(grazing)
+head(grazing)
+unique(grazing$Grazed)
+plot.default(grazing$Birds~grazing$Grazed)
+plot.default(grazing$Birds~grazing$When)
+```
 2. Fit a Poisson glm with systematic component Birds ~ When * Grazed,
 ensuring a diagnostic analysis.
+```{r}
+glm_ex_10.16 <- glm(Birds~When*Grazed,data=grazing,family=poisson())
+
+```
+
+
+
+
+
+```{r}
+summary(glm_ex_10.16)
+```
+
+Given that we can't use these approximantion we use quantile residuals
+```{r}
+q_resid_ex_10.16 <- qresid(glm_ex_10.16)
+
+```
+
+
+```{r}
+#We test independence
+acf(q_resid_ex_10.16)
+
+```
+
+There is independence i 
+It appears that there is independence.
+```{r}
+#We do a qqplot
+qqnorm(q_resid_ex_10.16,las=1)
+qqline(q_resid_ex_10.16)
+```
+
+We can see heavy tails and also, we can thing in outliers
+
+```{r}
+#We watch the influential measures
+influence_measures_ex_10.16 <- influence.measures(glm_ex_10.16)
+colSums(influence_measures_ex_10.16$is.inf)
+
+```
+
+The cook distance return 3 values, but the others don't show problems so we can expected 
+that there is not big difference for this let see the dfbetas
+```{r}
+dfbetas(glm_ex_10.16)[which(influence_measures_ex_10.16$is.inf[,7]),]
+```
+
+We can see from dfbetas that there is a great change.
 3. Show that overdispersion exists. Demonstrate by computing the mean
 and variance of each combination of the explanatory variables.
+
+```{r}
+grazing <-as.data.frame(grazing)
+mn_ex_10.16 <- grazing %>% group_by(When,Grazed)%>%summarise(across(Birds,mean))
+vr_ex_10.16 <- grazing %>% group_by(When,Grazed)%>%summarise(across(Birds,var))
+
+```
+
 4. Fit a quasi-Poisson model.
+```{r}
+glm_ex_10.16_qp <- glm(Birds~When*Grazed,data=grazing,family="quasipoisson")
+```
+
 5. Fit a negative binomial glm.
+```{r}
+#We need to load MASS packages
+library(MASS)
+glm_ex_10.16_nb <- glm.nb(Birds~When*Grazed,data=grazing)
+```
+
 6. Compare all three fitted models to determine a suitable model.
+```{r}
+
+```
 7. Interpret the final model
 
 
