@@ -257,3 +257,327 @@ coef(summary(glm_ex_6.10))
 deviance(glm_ex_6.10)
 
 ```
+
+
+7.4,
+
+Children were asked to build towers as high as they could out of cubical
+and cylindrical blocks [3, 7]. The number of blocks used and the time taken
+were recorded (data set: blocks). In this problem, only consider the number
+of blocks used y and the age of the child x. In Problem 6.10, a glm was fitted
+for these data.
+1. Use a Wald test to determine if age seems necessary in the model.
+
+```{r}
+#We compute the Wald test
+coef(summary(glm_ex_6.10))
+```
+We can see that the variable is statistically sifinicant, because we have a low p-value.
+
+
+2. Use a score test to determine if age seems necessary in the model.
+```{r}
+#We load the packages statmod that provide a Score test
+library(statmod)
+
+#We use the function glm.scoretest
+#Here is used the Pearson estimator of phi
+glm_ex_7.4 <- glm(Number~1,family = poisson(),blocks)
+z_stat_ex_7.4 <- glm.scoretest(glm_ex_7.4,blocks$Age)
+p_ex_7.4 <- 2*pnorm(abs(z_stat_ex_7.4),lower.tail=FALSE)
+p_ex_7.4
+
+#Here we assume t distribution and phi unknown
+z.score <- glm.scoretest(glm_ex_7.4, blocks$Age)
+2*pt(-abs(z.score),df=df.residual(glm_ex_6.10))
+P.score <- 2*(1-pt(abs(z.score), df=df.residual(glm_ex_6.10)))
+```
+In this case we have a p value very high, then we don't rejected the hypothesis that $H_0:\beta_{p+1}=0$
+
+3. Use a likelihood ratio test to determine if age seems necessary in the
+model.
+
+```{r}
+#We estimate the deviance from both models
+dev_glm_ex_6.10 <- deviance(glm_ex_6.10)
+dev_glm_ex_7.4 <- deviance(glm_ex_7.4)
+difference_deviance <-  dev_glm_ex_7.4 - dev_glm_ex_6.10
+likelihood_ratio_ex_7.4 <- pchisq(difference_deviance,df.residual(glm_ex_7.4)-df.residual(glm_ex_6.10),lower.tail = FALSE)
+
+
+#chisq.LRT <- anova(glm_ex_6.10)[2, 2]
+#P.LRT <- anova(glm_ex_6.10, test="Chisq")[2, 5]
+```
+
+4. Compare the results from the Wald, score and likelihood ratio tests. Comment.
+```{r}
+coef(summary(glm_ex_6.10))
+p_ex_7.4
+likelihood_ratio_ex_7.4
+```
+We can say that in each test we reject the hypothesis that age is 0. But we have a p value 
+more high in the wald test than in the other two tests. 
+
+5. Is the saddlepoint approximation expected to be accurate? Explain.
+
+```{r}
+min(blocks$Number)
+```
+In this case is sufficiently accurate, but in the boundary. 
+
+6. Is the Central Limit Theorem expected to be accurate? Explain.
+In this case the Central limit theorem is not sufficiently accuarate, because exist
+a value less than 5
+
+7. Find the 95% Wald confidence intervals for the regression coefficients.
+```{r}
+confint(glm_ex_6.10)
+```
+
+8. Plot the number of blocks used against age, and show the relationship
+described by the fitted model. Also plot the lines indicating the lower and
+upper 95% confidence intervals for these fitted values.
+
+```{r}
+sequence <-  seq( min(blocks$Age), 
+        max(blocks$Age), length=100)
+prediction <- predict(glm_ex_6.10,type="response",newdata=data.frame(Age=sequence),se.fit=TRUE)
+plot(jitter(Number)~Age,blocks)
+lines(prediction$fit~sequence,lwd=2)
+star <- qt(p=0.975, df=df.residual(m1))
+t_star <- qt(p=0.975,df=df.residual(glm_ex_6.10))
+ci.lo <- prediction$fit - t_star * prediction$se.fit
+ci.hi <- prediction$fit + t_star * prediction$se.fit
+lines(ci.lo~sequence, lty=2)
+lines(ci.hi~sequence, lty=2)
+```
+
+
+8.11 Children were asked to build towers as high as they could out of cubical
+and cylindrical blocks [8, 14]. The number of blocks used and the time taken
+were recorded (data set: blocks). In this problem, only consider the number
+of blocks used y and the age of the child x.
+In Problem 6.10, a glm was fitted for these data. Perform a diagnostic
+analysis, and determine if the model is suitable
+
+We are going to use the deviance residual because we have a saddle point accurate
+approximantion.
+
+
+```{r}
+#Deviance residual
+#We can use it if we have saddle point approximation
+dev_resid_ex_6.10 <- resid(glm_ex_6.10)
+
+#Standarized residual
+s_resid_ex_6.10 <- rstandard(glm_ex_6.10)
+
+#Quantile residual
+q_resid_ex_6.10 <- qresid(glm_ex_6.10)
+
+#It returns mu hat values
+#fitted(glm_ex_6.10)
+#
+fitted_values_ex_6.10 <-  fitted(glm_ex_6.10)
+plot(q_resid_ex_6.10~fitted_values_ex_6.10)
+```
+
+To test the independence we are going to do a ACF
+```{r}
+#We plot acf to know the independence
+acf(dev_resid_ex_6.10)
+
+plot(x=dev_resid_ex_6.10[-length(dev_glm_ex_6.10)],y=dev_resid_ex_6.10[-1])
+```
+We can see from both graphs that 
+we don't have independence.
+
+```{r}
+plot(rstandard(glm_ex_6.10)~fitted_values_ex_6.10)
+
+```
+
+
+```{r}
+#We do a plot of x an mu hat
+#with this we can see if the the model
+#doesn't present trends and and constant variation
+plot(q_resid_ex_6.10~blocks$Age)
+
+```
+We can see that we don't have
+a clear pattern, but we have a
+a high variance.
+
+```{r}
+#We do a qqplot to watch the random
+#component
+qqnorm(q_resid_ex_6.10,las=1)
+qqline(q_resid_ex_6.10)
+
+```
+We can see that the tails are little
+light, but it appears that there is not
+outliers.
+
+
+```{r}
+#Influence measures
+influence_measures_ex_6.10 <- influence.measures(glm_ex_6.10)
+colSums(influence_measures_ex_6.10$is.inf)
+```
+The covariance ratio show 7 
+observations. Given than anyother influence measure try this as
+influential we don't do something with the things. 
+
+
+9.10 The Independent newspaper tabulated the gender of all candidates running for election in the 1992 British general election (Table 9.10; data set:
+belection) [6].
+
+1. Plot the proportion of female candidates against the Party, and comment.
+
+
+```{r}
+library(magrittr)
+data(belection)
+head(belection)
+belection <- as.data.frame(belection)
+
+belection %<>% mutate("Prop_Female"=Females/(Females+Males))
+
+#We do the proportions
+belection %>% group_by(Party) %>% ggplot(aes(x=Party,fill=Party,y=Prop_Female))+geom_bar(stat="identity")
+
+```
+We can see that women have a little representation. 
+They have no even 2.5% of representation.
+
+2. Plot the proportion of female candidates against the Region, and comment.
+```{r}
+belection %>% group_by(Region) %>% ggplot(aes(x=Region,fill=Region,y=Prop_Female))+geom_bar(stat="identity")+theme(axis.text.x = element_text(angle = 90))
+```
+We can watch that the most representation is in NorthWest, and the less representation is in wales.
+
+```{r}
+
+
+```
+
+
+3. Find a suitable binomial glm, ensuring a diagnostic analysis.
+
+```{r}
+```
+```{r}
+#we are going to try with a link function logit
+glm_ex_9.10 <- glm(Prop_Female~Region+Party,weights = Females+Males,family=binomial(),data=belection)
+
+#We test if we can use saddle point and central limit approximation
+saddle_point_ex_9.10 <- (min(belection$Prop_Female*(belection$Females+belection$Males))>=3)+(min((1-belection$Prop_Female)*(belection$Females+belection$Males))<=3)
+
+```
+Then we can use this approxmations
+```{r}
+summary(glm_ex_9.10)
+```
+
+Given that we can't use these approximantion we use quantile residuals
+```{r}
+q_resid_ex_9.10 <- qresid(glm_ex_9.10)
+plot.default(x=belection$Party,y=q_resid_ex_9.10)
+plot.default(x=belection$Region,y=q_resid_ex_9.10)
+```
+We can se that there is not a trend, and the variance looks constant.
+
+```{r}
+#We test independence
+acf(q_resid_ex_9.10)
+
+```
+It appears that there is independence.
+```{r}
+#We do a qqplot
+qqnorm(q_resid_ex_9.10,las=1)
+qqline(q_resid_ex_6.10)
+```
+
+
+```{r}
+#We watch the influential measures
+influence_measures_ex_9.10 <- influence.measures(glm_ex_9.10)
+colSums(influence_measures_ex_9.10$is.inf)
+```
+
+We don't see influential observations.
+
+
+4. Is overdispersion evident?
+```{r}
+(df_ex_9.10 <- df.residual(glm_ex_9.10))
+(resid_dev <- deviance(glm_ex_9.10))
+(pearson_stat_ex_9.10 <- sum(resid(glm_ex_9.10,type="pearson")^2))
+#If both are more high than df then we can say that there
+#there is overdispersion
+```
+5. Interpret the fitted model.
+
+Given what we are saying is that given a characteristic of the person then 
+
+
+6. Estimate and interpret the odds of a female candidate running for the
+Conservative and Labour parties. Then compute the odds ratio of the
+Conservative party fielding a female candidate to the odds of the Labour
+party fielding a female candidate.
+7. Determine if the saddlepoint approximation is likely to be suitable for
+these data.
+
+9.14 In Example 9.4, data [3] were introduced regarding the germination
+of seeds, using two types of seeds and two types of root stocks (Table 9.3).
+An alternative way of entering the data is to record whether or not each
+individual seed germinates or not (data set: germBin).
+1. Fit the equivalent model to that fitted in Example 9.4, but using data
+prepared as in the data file germBin. This model is based on using a
+Bernoulli distribution.
+2. Show that both the Bernoulli and binomial glms produce the same values
+for the parameter estimates and standard errors.
+3. Show that the two models produce different values for the residual deviance, but the same values for the deviance.
+4. Show that the two models produce similar results from the sequential
+likelihood-ratio tests.
+5. Compare the log-likelihoods for the binomial and Bernoulli distributions.
+Comment.
+6. Explain why overdispersion cannot be detected in the Bernoulli model.
+
+
+10.11 
+0.11. The number of deaths for 1969–1973 (1969–1972 for Belgium) due to
+cervical cancer is tabulated (Table 10.14; data set: cervical) by age group
+for four different countries [19, 38].
+1. Plot the data, and discuss any prominent features.
+2. Explain why an offset is useful when fitting a glm to the data.
+3. Fit a Poisson glm with Age and Country as explanatory variables. 
+Produce the plot of residuals against fitted values, and evaluated the model.
+4. Fit the corresponding quasi-Poisson model. Produce the plot of residuals
+against fitted values, and evaluated the model.
+5. Fit the corresponding negative binomial glm. Produce the plot of residuals against fitted values, and evaluated the model.
+6. Which model seems appropriate, if any?
+
+
+10.16
+10.16. An experiment [21] compared the density of understorey birds at a
+series of sites in two areas either side of a stockproof fence (Table 10.19)
+data set: grazing). One side had limited grazing (mainly from native herbivores), and the other was heavily grazed by feral herbivores, mostly horses.
+Bird counts were recorded at the sites either side of the fence (the ‘before’
+measurements). Then the herbivores were removed, and bird counts recorded
+again (the ‘after’ measurements). The measurements are the total number of
+understorey-foraging birds observed in three 20-min surveys of 2 ha quadrats.
+1. Plot the data, and explain the important features.
+2. Fit a Poisson glm with systematic component Birds ~ When * Grazed,
+ensuring a diagnostic analysis.
+3. Show that overdispersion exists. Demonstrate by computing the mean
+and variance of each combination of the explanatory variables.
+4. Fit a quasi-Poisson model.
+5. Fit a negative binomial glm.
+6. Compare all three fitted models to determine a suitable model.
+7. Interpret the final model
+
+
