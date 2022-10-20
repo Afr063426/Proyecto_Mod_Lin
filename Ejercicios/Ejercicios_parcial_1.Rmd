@@ -476,17 +476,21 @@ glm_ex_9.10 <- glm(Prop_Female~Region+Party,weights = Females+Males,family=binom
 saddle_point_ex_9.10 <- (min(belection$Prop_Female*(belection$Females+belection$Males))>=3)+(min((1-belection$Prop_Female)*(belection$Females+belection$Males))<=3)
 
 ```
+
 Then we can use this approxmations
+
 ```{r}
 summary(glm_ex_9.10)
 ```
 
 Given that we can't use these approximantion we use quantile residuals
+
 ```{r}
 q_resid_ex_9.10 <- qresid(glm_ex_9.10)
 plot.default(x=belection$Party,y=q_resid_ex_9.10)
 plot.default(x=belection$Region,y=q_resid_ex_9.10)
 ```
+
 We can se that there is not a trend, and the variance looks constant.
 
 ```{r}
