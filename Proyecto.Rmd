@@ -65,12 +65,12 @@ data<-data%>%select(-c(day,month,year))
 
 data$station<-as.factor(data$station)
 stations <- levels(data$station)
-
+data<-cbind(data,"NivelDeContaminacion"=cut(data$PM2.5, breaks = c(seq(0, 1000,100)), include.lowest  = T))
 ```
 
 
 
-```{r}
+```{r ,eval=FALSE}
 data  %>%summary()
 info=list()
 vec<-vector()
@@ -81,19 +81,18 @@ for (k in 1:length(stations)) {
   
   # info[[k]]<-(data[data$station==stations[k],]%>%ggplot( aes(x=Fecha,y=cumsum(is.na(PM2.5)) ) )+geom_line())
   # print(info[[k]])
-  
-  # tem<- cumsum(is.na(data[data$station==stations[k],]$PM2.5))
-  # vec<-c(vec,tem)
-  
-  tem<- as.numeric(is.na(data[data$station==stations[k],]$PM2.5))
-  vec<-c(vec,tem)
-}
 
+  tem<- cumsum(is.na(data[data$station==stations[k],]$PM2.5))
+  vec<-c(vec,tem)
+  
+  # tem<- as.numeric(is.na(data[data$station==stations[k],]$PM2.5))
+  # vec<-c(vec,tem)
+}
 
 
 data1<-cbind(data,"suma_acumulada"=vec)
 
-data1[data$station==stations[k],]%>%ggplot( aes(x=Fecha,y=suma_acumulada, color=station) )+geom_line()
+data1%>%ggplot( aes(x=Fecha,y=suma_acumulada, color=station) )+geom_line()
 
 #i=1
 #i=10122+12*6
@@ -209,8 +208,6 @@ rm(aux,head_first_5,numeric_cols,PM2.5_aux,summary_2.5_station,summary_5_number,
 Frecuencia_lluvia<-data%>%select(RAIN,station)
 
 
-
-
 #Se calcula la cantidad de clases que deberían haber
 k<-nclass.Sturges(Frecuencia_lluvia$RAIN)
 
@@ -235,10 +232,8 @@ print(xtable(FA, type = "latex", tabular.environment="longtable"),include.rownam
 
 #Se elimina la tabla que tiene las frecuencias segun temperatura y anomalia
 rm(FA,Frecuencia_lluvia,intervalos)
-
-
-
 ```
+
 
 ```{r, eval=FALSE}
 #Frecuencia de PM2
@@ -269,15 +264,13 @@ print(xtable(FA, type = "latex", tabular.environment="longtable"),include.rownam
 #Se elimina la tabla que tiene las frecuencias segun temperatura y anomalia
 rm(FA,Frecuencia_PM2.5,intervalos)
 
-
-
 ```
 
 
 
 ```{r}
-summary(data)
-plot(data$PM2.5)
+data%>%ggplot(aes(x=, y=))
+
 
 
 ```
