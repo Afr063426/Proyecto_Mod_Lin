@@ -35,7 +35,7 @@ library(jcolors)
 library(xtable)
 library(rjags) #Gibbs method
 library(ecoforecastR) #This packages is used to forecast
-
+library(ggcorrplot)
 options(scipen = 999, digits = 5)
 #options(scipen = 999, digits = 5, OutDec = ",")
 
@@ -236,13 +236,78 @@ What we are going to do is the nextone:
 data%<>%mutate("Date"=as.Date(paste(year,month,day,sep="-"),format="%Y-%m-%d"))
 head(data)
 
-data_means <- data%>%group_by(station,Date)%>%summarise("PM2.5"=mean(PM2.5),
-                "SO2"=mean(SO2),"NO2"=mean(NO2),"CO"=mean(CO),"O3"=mean(O3),"TEMP"=mean(TEMP),
-                "PRES"=mean(PRES),"DEWP"=mean(DEWP),"RAIN"=mean(RAIN),"WSPM"=mean(WSPM))
-colSums(is.na(data_means))
+data_means <- data%>%group_by(station,Date)%>%summarise("PM2.5"=mean(PM2.5,na.rm=TRUE),
+                "SO2"=mean(SO2,na.rm=TRUE),
+                "NO2"=mean(NO2,na.rm=TRUE),
+                "CO"=mean(CO,na.rm=TRUE),
+                "O3"=mean(O3,na.rm=TRUE),
+                "TEMP"=mean(TEMP,na.rm=TRUE),
+                "PRES"=mean(PRES,na.rm=TRUE),
+                "DEWP"=mean(DEWP,na.rm=TRUE),
+                "RAIN"=mean(RAIN,na.rm=TRUE),
+                "WSPM"=mean(WSPM,na.rm=TRUE))
+data_means[is.na(data_means)]<-NA
 write.csv(file="data_means.csv",data_means)
-View(data_means)
+
+
+ggsave("cor_means.pdf",ggcorrplot(cor(data_means[,-c(1,2)],use = "complete.obs")))
+#hist(data_means$PM2.5)
 head(data_means)
 ```
 
+
+```{r}
+#We are going to use the function
+#fit_dlm that is part of the package ecoforecast
+AIC <- function(y,y_hat,k){
+    SSE <- sum((y-y_hat)^2)
+    n <- length(y)
+    AIC <- log(SSE/n)+(n+2*(k+1))/n
+    return(AIC)
+}
+
+#Example of structure function
+#dlm <- fit_dlm(model=list(obs="PM2.5",fixed="~ 1 + X + Variable"))
+#cat(dlm) returns the code created and given to rjags
+dlm <- function(data,arg,k){
+    fit <- fit_dlm(model = list(obs="PM2.5",fixed = args),data)
+    smooth <- as.matrix(fit$predict)
+    return(AIC(data$PM2.5,smooth,k))
+
+}
+
+concat <- function(best_model,variable){
+    return(paste(best_model,variable, sep = " + "))
+}
+fit <- function(station,data){
+    data_train <- data%>%filter(station==station)
+    data_train <- data_train[-(nrow(data)-(0:31)),]
+    variables <- colnames(data_train[,-(1:2)])
+    best_model <- "~ 1 + X"
+    k <- 2
+    print("Hola")
+    while(length(variables)>=1){
+        best_aux <- unlist(lapply(FUN = concat, X=variables,best_model = best_model))
+        AIC_aux <- unlist(mapply(FUN = dlm, X=best_aux,data=list(data_train),k=k))
+    print(best_aux)
+        min <- min(AIC_aux)
+        if (AIC<=min){
+         break   
+        }else{
+            variable <- variables(which(AIC_aux==min)[1])
+            variables <- variables[-which(AIC_aux==min)[1]]
+            best_model <- paste(best_model,variable,sep = " + ")
+            k <- k+1
+        }
+    }
+    return(data.frame("Station"=station,"Model" = best_model,"AIC" = AIC))
+}
+models <- data.frame("Station" = character(),"Model" = character(),"AIC"=numeric())
+fit(stations[1],data_means)
+prueba <- data_means%>%filter(station==stations[2])
+
+fit_dlm(model = list(obs="PM2.5",fixed = "~1 + X + CO"),prueba)
+fit_dlm(model = list(obs="PM2.5",fixed = args),data_means)s
+
+```
 
