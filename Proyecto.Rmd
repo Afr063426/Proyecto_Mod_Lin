@@ -30,8 +30,12 @@ library(prettydoc)
 library(rmarkdown)
 library(tidyverse)
 library(kableExtra)
+library(magrittr)
 library(jcolors)
 library(xtable)
+library(rjags) #Gibbs method
+library(ecoforecastR) #This packages is used to forecast
+
 options(scipen = 999, digits = 5)
 #options(scipen = 999, digits = 5, OutDec = ",")
 
@@ -213,5 +217,32 @@ rm(FA,Frecuencia_PM2.5,intervalos)
 
 
 
+
+
+# Modelling
+
+We are going to mode using Bayesian Analysis of State Space Models.
+What we are going to do is the nextone:
+
+1. Select the station.
+2. Delete the last 31 observations.
+3. We take the mean of each variable.
+4. Apply the model, taking in consideration one new variable.
+5. Test fit using AIC.
+6. Select best model. 
+7. Move to step 3 again to select another new variable, until finish with all variables.
+8. Forecast the last 31 observations.
+```{r}
+data%<>%mutate("Date"=as.Date(paste(year,month,day,sep="-"),format="%Y-%m-%d"))
+head(data)
+
+data_means <- data%>%group_by(station,Date)%>%summarise("PM2.5"=mean(PM2.5),
+                "SO2"=mean(SO2),"NO2"=mean(NO2),"CO"=mean(CO),"O3"=mean(O3),"TEMP"=mean(TEMP),
+                "PRES"=mean(PRES),"DEWP"=mean(DEWP),"RAIN"=mean(RAIN),"WSPM"=mean(WSPM))
+colSums(is.na(data_means))
+write.csv(file="data_means.csv",data_means)
+View(data_means)
+head(data_means)
+```
 
 
