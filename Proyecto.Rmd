@@ -1,6 +1,6 @@
 ---
 title: "Laboratorio 1"
-author: "Joshua Cervantes/Moisés Monge"
+author: "Joshua Cervantes/Moisés Monge/Daniel Sabater"
 date: "`r format(Sys.time(), '%d %B %Y')`"
 mail: "joshua.cervantes@ucr.ac.cr"
 linkedin: ""
@@ -32,6 +32,7 @@ library(tidyverse)
 library(kableExtra)
 library(jcolors)
 library(xtable)
+library(lubridate)
 options(scipen = 999, digits = 5)
 #options(scipen = 999, digits = 5, OutDec = ",")
 
@@ -55,13 +56,71 @@ options(scipen = 999, digits = 5)
 #-----------------------------------------
 #We read the documento
 data <- read.csv("datos.csv")
-data<-data[-1]
+data<-data[-c(1,2)]
+
+data<-cbind("Fecha"=dmy(paste(data$day,data$month,data$year)), data)
+
+data<-data%>%select(-c(day,month,year))
+
+
 data$station<-as.factor(data$station)
-stations <- unique(data$station)
+stations <- levels(data$station)
+
 ```
 
 
-```{r Table_Head}
+
+```{r}
+data  %>%summary()
+info=list()
+vec<-vector()
+
+for (k in 1:length(stations)) {
+  # info[[k]]<-summary(data[data$station==stations[k],])
+  # print(info[[k]])
+  
+  # info[[k]]<-(data[data$station==stations[k],]%>%ggplot( aes(x=Fecha,y=cumsum(is.na(PM2.5)) ) )+geom_line())
+  # print(info[[k]])
+  
+  # tem<- cumsum(is.na(data[data$station==stations[k],]$PM2.5))
+  # vec<-c(vec,tem)
+  
+  tem<- as.numeric(is.na(data[data$station==stations[k],]$PM2.5))
+  vec<-c(vec,tem)
+}
+
+
+
+data1<-cbind(data,"suma_acumulada"=vec)
+
+data1[data$station==stations[k],]%>%ggplot( aes(x=Fecha,y=suma_acumulada, color=station) )+geom_line()
+
+#i=1
+#i=10122+12*6
+#i=14109+12
+#i=15755+24*15
+#i=18735+24*2
+# i=19987
+# 
+# suma=0
+# 
+# while ((length(data$PM2.5[i])-12)<i & suma<12) {
+#   suma<-sum(is.na(data$PM2.5[c(i:(i+12))]))
+#   i=i+1
+# }
+# 
+# 
+#   data$PM2.5[i:(i+(24*15))]
+#   data$PM2.5[i:(i+(12*14*2+12))]
+#   
+#   data[i:(i+(12*14)),]
+
+
+
+
+```
+
+```{r Table_Head, eval=FALSE}
 #We create a table in format latex for the work
 
 head_first_5 <- head(data, n=5)
@@ -72,7 +131,7 @@ print(xtable(head_first_5, type = "latex", tabular.environment="longtable"),
 ```
 
 
-```{r Summary_5}
+```{r Summary_5, eval=FALSE}
 #We create the summary of five numbers for 
 #We select only the numeric kind
 numeric_cols <- data%>%select_if(is.numeric)
@@ -145,9 +204,12 @@ rm(aux,head_first_5,numeric_cols,PM2.5_aux,summary_2.5_station,summary_5_number,
 
 
 
-```{r}
+```{r, eval=FALSE}
 #Frecuencia de lluvia
 Frecuencia_lluvia<-data%>%select(RAIN,station)
+
+
+
 
 #Se calcula la cantidad de clases que deberían haber
 k<-nclass.Sturges(Frecuencia_lluvia$RAIN)
@@ -178,7 +240,7 @@ rm(FA,Frecuencia_lluvia,intervalos)
 
 ```
 
-```{r}
+```{r, eval=FALSE}
 #Frecuencia de PM2
 Frecuencia_PM2.5<-data%>%select(PM2.5,station)
 
@@ -213,5 +275,11 @@ rm(FA,Frecuencia_PM2.5,intervalos)
 
 
 
+```{r}
+summary(data)
+plot(data$PM2.5)
+
+
+```
 
 
