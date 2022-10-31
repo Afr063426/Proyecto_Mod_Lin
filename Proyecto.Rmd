@@ -33,6 +33,9 @@ library(kableExtra)
 library(jcolors)
 library(xtable)
 library(lubridate)
+library(ggplot2)
+library(ggcorrplot)
+
 options(scipen = 999, digits = 5)
 #options(scipen = 999, digits = 5, OutDec = ",")
 
@@ -271,8 +274,26 @@ rm(FA,Frecuencia_PM2.5,intervalos)
 ```{r}
 data%>%ggplot(aes(x=, y=))
 
+ggcorrplot(cor(data%>%select(-c(Fecha, hour,wd,station,NivelDeContaminacion )), use = "complete.obs"))
 
 
 ```
+
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
 
 
