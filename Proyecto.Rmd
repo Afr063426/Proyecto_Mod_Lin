@@ -35,6 +35,7 @@ library(xtable)
 library(lubridate)
 library(ggplot2)
 library(ggcorrplot)
+library(rcartocolor)
 
 options(scipen = 999, digits = 5)
 #options(scipen = 999, digits = 5, OutDec = ",")
@@ -64,11 +65,17 @@ data<-data[-c(1,2)]
 data<-cbind("Fecha"=dmy(paste(data$day,data$month,data$year)), data)
 
 data<-data%>%select(-c(day,month,year))
-
+data$wd<-as.factor(data$wd)
 
 data$station<-as.factor(data$station)
 stations <- levels(data$station)
-data<-cbind(data,"NivelDeContaminacion"=cut(data$PM2.5, breaks = c(seq(0, 1000,100)), include.lowest  = T))
+
+data<-cbind(data,"NivelDeViento"=cut(data$WSPM,breaks = c(seq(0, 14,2)), include.lowest  = T))
+
+
+
+
+
 ```
 
 
@@ -117,10 +124,9 @@ data1%>%ggplot( aes(x=Fecha,y=suma_acumulada, color=station) )+geom_line()
 #   
 #   data[i:(i+(12*14)),]
 
-
-
-
 ```
+
+
 
 ```{r Table_Head, eval=FALSE}
 #We create a table in format latex for the work
@@ -131,6 +137,7 @@ print(xtable(head_first_5, type = "latex", tabular.environment="longtable"),
     include.rownames=FALSE, file = "head_5.tex")
 
 ```
+
 
 
 ```{r Summary_5, eval=FALSE}
@@ -238,6 +245,7 @@ rm(FA,Frecuencia_lluvia,intervalos)
 ```
 
 
+
 ```{r, eval=FALSE}
 #Frecuencia de PM2
 Frecuencia_PM2.5<-data%>%select(PM2.5,station)
@@ -271,16 +279,90 @@ rm(FA,Frecuencia_PM2.5,intervalos)
 
 
 
-```{r}
-data%>%ggplot(aes(x=, y=))
 
-ggcorrplot(cor(data%>%select(-c(Fecha, hour,wd,station,NivelDeContaminacion )), use = "complete.obs"))
+```{r, fig.align="center",fig.width=11, fig.height=7, echo=FALSE, message=FALSE, warning=FALSE,fig.cap='titulo'}
+imagen1<-data %>%ggplot(aes(y = station, x = PM2.5, group=station, color=station)) +
+  geom_boxplot(aes(color = station), alpha = 1) +
+  stat_boxplot(geom='errorbar', linetype=1, width=0.5)+
+  #geom_jitter(aes(color = station), size = 1, alpha = 0.008)+
+  scale_color_discrete(name = "station")+
+  stat_summary(fun.y=mean, geom="point", shape=18,size=3)+
+  scale_color_carto_d(palette = "Bold")+
+  labs( y='',x='PM 2.5')+
+  guides(color=guide_legend(title="Estación"),fill=guide_legend("Tipo de Estación")) +
+  theme_minimal()+
+  theme(
+        legend.position="none",
+        plot.caption = element_text(hjust = 0),
+        text =  element_text(size=17))
+imagen1
+ggsave(file="DistribucionPM25Porsitarda.pdf", plot=imagen1, width=11, height=7)
+
+```
+
+
+
+
+```{r}
+imagen1<-ggcorrplot(cor(data%>%select(-c(Fecha, hour,wd,station,NivelDeViento )), use = "complete.obs"),legend.title = "Pearson")
+imagen1
+ggsave(file="Correlacion.pdf", plot=imagen1, width=11, height=7)
+```
+
+
+
+```{r}
+# plot(data%>%select(-c(Fecha, hour)))
+
+
+ggplot(data,aes( y = PM2.5, x= NivelDeViento)) + 
+  geom_point()+
+  theme_minimal()
+
+
+
+imagen1
+ggsave(file="asociacion.pdf", plot=imagen1, width=11, height=7)
+
+```
+
+
+
+
+
+```{r}
+
+imagen1<-ggplot(data,aes( x = NivelDeViento, group=station, color=station, fill=station)) + 
+  geom_bar()+
+  scale_color_discrete(name = "station")
+
+
+imagen1
+ggsave(file="distribucion_Viento.pdf", plot=imagen1, width=11, height=7)
+
 
 
 ```
 
 
-```{r}
+
+```{r, fig.align="center",fig.width=11, fig.height=7, echo=FALSE, message=FALSE, warning=FALSE,fig.cap='titulo'}
+imagen1<-data %>%ggplot(aes(y = station, x = NivelDeViento, group=station, color=station)) +
+  geom_boxplot(aes(color = station), alpha = 1) +
+  stat_boxplot(geom='errorbar', linetype=1, width=0.5)+
+  #geom_jitter(aes(color = station), size = 1, alpha = 0.008)+
+  scale_color_discrete(name = "station")+
+  stat_summary(fun.y=mean, geom="point", shape=18,size=3)+
+  scale_color_carto_d(palette = "Bold")+
+  labs( y='',x='NivelDeViento')+
+  guides(color=guide_legend(title="Estación"),fill=guide_legend("Tipo de Estación")) +
+  theme_minimal()+
+  theme(
+        legend.position="none",
+        plot.caption = element_text(hjust = 0),
+        text =  element_text(size=17))
+imagen1
+ggsave(file="DistribucionPM25Porsitarda.pdf", plot=imagen1, width=11, height=7)
 
 ```
 
@@ -288,6 +370,14 @@ ggcorrplot(cor(data%>%select(-c(Fecha, hour,wd,station,NivelDeContaminacion )), 
 
 
 
+
+```{r}
+library(paletteer)
+
+paletteer_d("rcartocolor::Bold")
+
+
+```
 
 
 
