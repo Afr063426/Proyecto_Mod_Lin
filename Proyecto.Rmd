@@ -36,9 +36,10 @@ library(xtable)
 library(rjags) #Gibbs method
 library(ecoforecastR) #This packages is used to forecast
 library(ggcorrplot)
+
 options(scipen = 999, digits = 5)
 #options(scipen = 999, digits = 5, OutDec = ",")
-
+setwd("C:/Users/saac9/OneDrive - Universidad de Costa Rica/Documents/UCR/2022/Modelos_Lineales/Proyecto_Mod_Lin")
 
 #We comment beacuse only is needed to create the table
 #used with all the stations
@@ -247,16 +248,21 @@ data_means <- data%>%group_by(station,Date)%>%summarise("PM2.5"=mean(PM2.5,na.rm
                 "RAIN"=mean(RAIN,na.rm=TRUE),
                 "WSPM"=mean(WSPM,na.rm=TRUE))
 data_means[is.na(data_means)]<-NA
+data_means%<>%mutate("Julian"=as.POSIXlt(Date)$yday)
 write.csv(file="data_means.csv",data_means)
-
+data_means%<>%mutate("I1"=0<=WSPM && WSPM <=2,"I2"= 2<WSPM && WSPM <=4,
+                    "I3"= 4<WSPM && WSPM <=6, "I4"= 6<WSPM && WSPM <=8)
 
 ggsave("cor_means.pdf",ggcorrplot(cor(data_means[,-c(1,2)],use = "complete.obs")))
 #hist(data_means$PM2.5)
-head(data_means)
+
+
+
 ```
 
 
 ```{r}
+#For the next
 #We are going to use the function
 #fit_dlm that is part of the package ecoforecast
 AIC <- function(y,y_hat,k){
@@ -270,9 +276,10 @@ AIC <- function(y,y_hat,k){
 #dlm <- fit_dlm(model=list(obs="PM2.5",fixed="~ 1 + X + Variable"))
 #cat(dlm) returns the code created and given to rjags
 dlm <- function(data,arg,k){
-    fit <- fit_dlm(model = list(obs="PM2.5",fixed = args),data)
+    print('hola')
+    fit <- fit_dlm(model = list(obs="PM2.5", fixed = arg),data)
     smooth <- as.matrix(fit$predict)
-    return(AIC(data$PM2.5,smooth,k))
+    return(AIC(data$PM2.5,colMeans(smooth),k))
 
 }
 
@@ -281,20 +288,27 @@ concat <- function(best_model,variable){
 }
 fit <- function(station,data){
     data_train <- data%>%filter(station==station)
-    data_train <- data_train[-(nrow(data)-(0:31)),]
+    data_train <- data_train[-(nrow(data_train)-(0:31)),]
     variables <- colnames(data_train[,-(1:2)])
+    
     best_model <- "~ 1 + X"
     k <- 2
-    print("Hola")
     while(length(variables)>=1){
+        #print("Hola")
         best_aux <- unlist(lapply(FUN = concat, X=variables,best_model = best_model))
-        AIC_aux <- unlist(mapply(FUN = dlm, X=best_aux,data=list(data_train),k=k))
-    print(best_aux)
+        fn <- function(X){
+            head(data_train)
+            return(dlm(data=data_train,arg=X,k=k))            
+        }
+        AIC_aux<-numeric()
+        for(j in best_aux){
+            AIC_aux[length(AIC_aux)+1] <- fn(X=j)
+        }
         min <- min(AIC_aux)
         if (AIC<=min){
          break   
         }else{
-            variable <- variables(which(AIC_aux==min)[1])
+            variable <- variables[which(AIC_aux==min)[1]]
             variables <- variables[-which(AIC_aux==min)[1]]
             best_model <- paste(best_model,variable,sep = " + ")
             k <- k+1
@@ -303,11 +317,104 @@ fit <- function(station,data){
     return(data.frame("Station"=station,"Model" = best_model,"AIC" = AIC))
 }
 models <- data.frame("Station" = character(),"Model" = character(),"AIC"=numeric())
-fit(stations[1],data_means)
-prueba <- data_means%>%filter(station==stations[2])
+for(i in stations){
+    model_aux <- fit(i,data_means)
+   rbind(models,model_aux)
+}
+```
 
-fit_dlm(model = list(obs="PM2.5",fixed = "~1 + X + CO"),prueba)
-fit_dlm(model = list(obs="PM2.5",fixed = args),data_means)s
+
+```{r}
+#Give that we don't have enough time we are going to take one model for each station
+#We are going to take CO and WSPM
+
+for (j in stations){
+    data_test <- data_means%>%filter(station == j )
+    data_test[(nrow(data_test)-(0:31)),] <-NA #We assign NA
+    assign(paste("Model",j,sep="_"),fit_dlm(model = list(obs="PM2.5", fixed = "~ 1 + X + CO + Julian + I1 + I2 + I3 + I4"),data_test)) 
+}
+
+#prueba <- fit_dlm(model=list(obs="logy",fixed="~ 1 + X + Julian"),data_test)
+#estimation <- exp(as.matrix(prueba$predict))
+#estimacion<-colMeans(estimation)
+
+parameters <- data.frame("Station"=character(),"betaCO"=numeric(),"betaIntercept"=numeric(),"betaWSPM"=numeric(),"betaX"=numeric(),"tau_add"=numeric(),"tau_obs"=numeric())
+for (j in stations){
+    model <- get(paste("Model",j,sep="_"))   
+    params <- as.matrix(model$params)
+    means <-  colMeans(params)
+    aux <- data.frame("Station"=j,"betaCO"=means[1],"betaIntercept"=means[2],"betaWSPM"=means[3],"betaX"=means[4],"tau_add"=means[5],"tau_obs"=means[6])
+    rbind(parameters,aux)
+}
+
+
+#Used to write CSV with information
+for (j in stations){
+    model <- get(paste("Model",j,sep="_"))   
+    params <- as.matrix(model$params)
+    write.csv(file=paste(paste("params",j,sep="_"),"csv",sep="."),params)
+}
+
+
+for (j in stations){
+    model <- get(paste("Model",j,sep="_"))   
+    predict <- as.matrix(model$predict)
+    write.csv(file=paste(paste("predict",j,sep="_"),"csv",sep="."),predict)
+}
+
+#colMeans(as.matrix(Model_Aotizhongxin$params))
+```
+
+```{r}
+#We proceeed to add every estimation
+data_means%<>%mutate("Predict"=0,"Q1"=0,"Q3"=0)
+
+for (j in stations){
+    model <- get(paste("Model",j,sep = "_"))
+    predict <- as.matrix(model$predict)
+    means <- colMeans(predict)
+    quantile_1 <- apply(predict,2,quantile,c(0.025))
+    quantile_3 <- apply(predict,2,quantile,c(0.975))
+    station <- data_means$station==j
+    data_means$Predict[station] <- means
+    data_means$Q1[station] <- quantile_1
+    data_means$Q3[station] <- quantile_3
+}
+
 
 ```
+
+
+```{r}
+options(repr.plot.width=, repr.plot.height=8)
+data_means%<>%mutate(Year=format(Date,"%Y"))
+data_means%<>%mutate(Month_date=as.Date(format(Date,"%d-%m"),format="%d-%m"))
+
+
+for(i in stations){
+    ggsave(filename=paste("times_serie","_",i,".pdf",sep=""),data_means%>%filter(station== i)%>%ggplot(aes(x=Date,y=PM2.5))+geom_point(color="blue",alpha=0.4)+geom_line(aes(x=Date,y=Predict),color="red",alpha=0.4)+scale_x_date(date_labels = "%Y")+  geom_ribbon(aes(ymin = Q1, ymax = Q3), alpha = 0.4)+ylab("PM2.5")+xlab("Fecha")+theme_minimal()+theme(text=element_text(size=24)),width=20,height=10)
+}
+
+View(data_means)
+
+```
+
+
+```{r}
+parameters <- data.frame("Station"=character(),"betaCO"=numeric(),"betaIntercept"=numeric(),"betaWSPM"=numeric(),"betaX"=numeric())
+for (j in stations){
+    model <- get(paste("Model",j,sep="_"))   
+    p <-  colMeans(as.matrix(model$params))
+    
+    aux <- data.frame("Station"=j,"betaCO"=p[1],"beta_0-2"=p[2],"beta_2-4"=p[3],"beta_4-6"=p[4],"beta_6-8"=p[5],"betaIntercept"=p[6],"betaJulian"=p[7],"betaJulian"=p[8],"betaX"=p[9])
+    parameters <- rbind(parameters,aux)
+}
+
+
+print(xtable(parameters, type = "latex", tabular.environment="longtable"),
+    include.rownames=FALSE, file = "means_params.tex")
+```
+
+
+
 
