@@ -344,10 +344,10 @@ ggsave(file="asociacion.pdf", plot=imagen1, width=11, height=7)
 
 ```{r, fig.align="center",fig.width=11, fig.height=7, echo=FALSE, message=FALSE, warning=FALSE,fig.cap='titulo'}
 
-imagen1<-data_means%>%filter(!is.na(NivelDeViento) ) %>% ggplot(aes( x = NivelDeViento, group=station, color=station, fill=station)) + 
-  geom_bar(aes(color = station))+
-  scale_color_carto_d(palette = "Bold", name="Estación")+
-  scale_fill_carto_d(palette = "Bold", name="Estación")+
+imagen1<-data_means%>%filter(!is.na(NivelDeViento) ) %>% ggplot(aes( x = NivelDeViento)) + 
+  geom_bar(colour = '#008695FF', fill='#008695FF' )+
+  # scale_color_carto_d(palette = "Bold", name="Estación")+
+  # scale_fill_carto_d(palette = "Bold", name="Estación")+
   labs(x='Velocidad del viento', y='Cantidad')+
   theme_minimal()+theme(text =  element_text(size=17))
 
@@ -355,7 +355,7 @@ imagen1<-data_means%>%filter(!is.na(NivelDeViento) ) %>% ggplot(aes( x = NivelDe
 imagen1
 ggsave(file="distribucion_Viento.pdf", plot=imagen1, width=11, height=7)
 
-element_text
+
 
 ```
 
