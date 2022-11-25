@@ -63,6 +63,7 @@ data <- read.csv("datos.csv")
 data<-data[-1]
 data$station<-as.factor(data$station)
 stations <- unique(data$station)
+data%<>%mutate("Date"=as.Date(paste(year,month,day,sep="-"),format="%Y-%m-%d"))
 ```
 
 
@@ -415,6 +416,92 @@ print(xtable(parameters, type = "latex", tabular.environment="longtable"),
     include.rownames=FALSE, file = "means_params.tex")
 ```
 
+# Second and last chance modelling
+```{r}
+#We are going to use dlmModReg, and dlmMLE
+library(dlm)
+#For estimate by date
+#df_contamination <- read.csv("data_means.csv")
+#plot(diff(df_contamination_Aotizhongxin$PM2.5),type = "l")
+
+#For estimate bu month
+data%<>%mutate("Date"=as.Date(paste(year,month,day,sep="-"),format="%Y-%m-%d"))
+data%<>%mutate("YM"=format(as.Date(Date,"%Y-%m-%d"),"%Y-%m"))
+df_contamination <- data%>%group_by(station,YM)%>%summarise("PM2.5"=mean(PM2.5,na.rm=TRUE),
+                "SO2"=mean(SO2,na.rm=TRUE),
+                "NO2"=mean(NO2,na.rm=TRUE),
+                "CO"=mean(CO,na.rm=TRUE),
+                "O3"=mean(O3,na.rm=TRUE),
+                "TEMP"=mean(TEMP,na.rm=TRUE),
+                "PRES"=mean(PRES,na.rm=TRUE),
+                "DEWP"=mean(DEWP,na.rm=TRUE),
+                "RAIN"=mean(RAIN,na.rm=TRUE),
+                "WSPM"=mean(WSPM,na.rm=TRUE))
+
+#For both
+df_contamination_Aotizhongxin <- df_contamination%>%filter(station == "Aotizhongxin")
 
 
+build_model <- function (u){
+        u <- exp(u)
+        dlmModReg(data.frame(diff(log(as.numeric(df_contamination_Aotizhongxin$WSPM))),diff(log(df_contamination_Aotizhongxin$CO))), dV = u[1],dW = u[2:length(u)])
+}
+
+
+
+outMLE <- dlmMLE(diff(log(df_contamination_Aotizhongxin$PM2.5)),parm = rep(1,4),build_model)
+df_contamination_estimated <- build_model(outMLE$par)
+dlm_filtered <- dlmFilter(c(diff(log(df_contamination_Aotizhongxin$PM2.5)), rep(NA,4)),df_contamination_estimated)#Add NA to predict
+
+plot(diff(log(df_contamination_Aotizhongxin$PM2.5)),type = "l")
+n <- length(dlm_filtered$f)
+lines(dlm_filtered$f,lty = "longdash")
+dlmLL(diff(log(df_contamination_Aotizhongxin$PM2.5)),df_contamination_estimated)
+#dlm_contaminacion_forecast <- dlmForecast(dlm_filtered,nAhead = 10,sampleNew = 10)
+colnames(df_contamination_Aotizhongxin)
+```
+
+In this case what we have done is to estimate the rates of the variables
+
+```{r}
+#We are going to work with the month change 
+build_model <- function (df_variables,u){
+        u <- exp(u)
+        dlmModReg(df_variables, dV = u[1],dW = u[2:length(u)])
+}
+
+dlm_aic <- function(loglik,coef){
+    2*loglik+2*sum(coef)
+}
+
+
+#We create a function to select the best model using AIC criterion
+#This function produce a data frame with the log diffs of the data
+diff_variables <- function(df,station){
+        df%<>%filter(station == station)%>%mutate("YM"=format(as.Date(Date,"%Y-%m-%d"),"%Y-%m"))
+        df%<>%group_by(YM)%>%summarise("PM2.5"=mean(PM2.5,na.rm=TRUE),
+                "SO2"=mean(SO2,na.rm=TRUE),
+                "NO2"=mean(NO2,na.rm=TRUE),
+                "CO"=mean(CO,na.rm=TRUE),
+                "O3"=mean(O3,na.rm=TRUE),
+                "TEMP"=mean(TEMP,na.rm=TRUE),
+                "PRES"=mean(PRES,na.rm=TRUE),
+                "DEWP"=mean(DEWP,na.rm=TRUE),
+                "RAIN"=mean(RAIN,na.rm=TRUE),
+                "WSPM"=mean(WSPM,na.rm=TRUE))
+        name_cols <- colnames(df)
+        columns <- ncol(df)
+        #print(columns)
+        for(i in 2:columns){
+            df <- df%>%mutate(name = log(as.numeric(unlist(df[,i])))-log(as.numeric(unlist(lag(df[,i])))))
+            colnames(df)[ncol(df)] <- paste("diff",name_cols[i],sep = "_")
+            #print(head(df))
+        }
+        df[is.na(df)]<- NA
+        df[] <- lapply(df, function(i) if(is.numeric(i)) ifelse(is.infinite(i), NA, i) else i)
+        return(df)
+        
+}
+
+```
 
