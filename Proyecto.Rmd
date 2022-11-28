@@ -33,6 +33,7 @@ library(kableExtra)
 library(magrittr)
 library(jcolors)
 library(xtable)
+library(RColorBrewer)
 library(rjags) #Gibbs method
 library(ecoforecastR) #This packages is used to forecast
 library(ggcorrplot)
@@ -439,7 +440,7 @@ df_contamination <- data%>%group_by(station,YM)%>%summarise("PM2.5"=mean(PM2.5,n
                 "WSPM"=mean(WSPM,na.rm=TRUE))
 
 #For both
-df_contamination_Aotizhongxin <- df_contamination%>%filter(station == "Aotizhongxin")
+df_contamination_Aotizhongxin <- df_contamination%>%filter(station == stations[2])
 
 
 build_model <- function (u){
@@ -447,12 +448,18 @@ build_model <- function (u){
         dlmModReg(data.frame(diff(log(as.numeric(df_contamination_Aotizhongxin$WSPM))),diff(log(df_contamination_Aotizhongxin$CO))), dV = u[1],dW = u[2:length(u)])
 }
 
+build_model <- function (u){
+        u <- exp(u)
+        dlmModReg(diff(log(df_contamination_Aotizhongxin$PRES)), dV = u[1],dW = u[2:length(u)])
+}
 
 
-outMLE <- dlmMLE(diff(log(df_contamination_Aotizhongxin$PM2.5)),parm = rep(1,4),build_model)
+changes <- diff(log(df_contamination_Aotizhongxin$PM2.5))
+changes[is.na(changes)] <- NA
+outMLE <- dlmMLE(changes,parm = rep(1,3),build_model)
 df_contamination_estimated <- build_model(outMLE$par)
-dlm_filtered <- dlmFilter(c(diff(log(df_contamination_Aotizhongxin$PM2.5)), rep(NA,4)),df_contamination_estimated)#Add NA to predict
-
+dlm_filtered <- dlmFilter(c(diff(log(df_contamination_Aotizhongxin$PM2.5)), rep(NA,30)),df_contamination_estimated)#Add NA to predict
+plot(dlm_filtered$f,type="l")
 plot(diff(log(df_contamination_Aotizhongxin$PM2.5)),type = "l")
 n <- length(dlm_filtered$f)
 lines(dlm_filtered$f,lty = "longdash")
@@ -482,7 +489,7 @@ diff_variables <- function(df,station){
         
         df <-df%>%mutate("YM"=format(as.Date(Date,"%Y-%m-%d"),"%Y-%m"))
         
-        df <- df%>%group_by(YM)%>%summarise("PM2.5"=mean(PM2.5,na.rm=TRUE),
+        df <- df%>%group_by(Date)%>%summarise("PM2.5"=mean(PM2.5,na.rm=TRUE),
                 "SO2"=mean(SO2,na.rm=TRUE),
                 "NO2"=mean(NO2,na.rm=TRUE),
                 "CO"=mean(CO,na.rm=TRUE),
@@ -502,6 +509,7 @@ diff_variables <- function(df,station){
         }
         df[is.na(df)]<- NA
         df[] <- lapply(df, function(i) if(is.numeric(i)) ifelse(is.infinite(i), NA, i) else i)
+        df[] <- lapply(df, function(i) if(is.numeric(i)) ifelse(is.infinite(-i), NA, i) else i)
         return(df)
 
         
@@ -512,14 +520,21 @@ best_dlm <- function(df,station){
     name_columns <- grepl("diff_",name_columns)
     df <- df[,name_columns]
     name_columns <- colnames(df)
-    df_for_forecast <- df[-seq(nrow(df)-5,nrow(df),by=1),]
+    #df_for_forecast <- df[-seq(nrow(df)-9,nrow(df),by=1),name_columns!="diff_PM2.5"]
+
+    df_for_forecast <- df[,name_columns!="diff_PM2.5"]
+    print(head(df_for_forecast))
+    #df_for_forecast <- df
     n_columns <- ncol(df_for_forecast)
+    name_columns <- colnames(df_for_forecast)
+    #name_columns <- name_columns[name_columns!="diff_PM2.5"]
     model_selected <-character()
     fn <- function(aux){
         aux <- c(aux,model_selected)
         #print(aux)
         df_auxiliar <- df_for_forecast%>%select(aux)
-        aic <- tryCatch(return(dlm_aic(dlmLL(df_for_forecast$diff_PM2.5,dlmModReg(df_auxiliar)),length(aux)+1)),error = function(e){return(NA)})
+        #aic <- tryCatch(return(dlm_aic(dlmLL(df$diff_PM2.5[-seq(nrow(df)-9,nrow(df),by=1)],dlmModReg(df_auxiliar)),length(aux)+1)),error = function(e){return(NA)})
+        aic <- tryCatch(return(dlm_aic(dlmLL(df$diff_PM2.5,dlmModReg(df_auxiliar)),length(aux)+1)),error = function(e){return(NA)})
         return(aic)
     }
 
@@ -527,6 +542,7 @@ best_dlm <- function(df,station){
         if(i == 1){
             aic_aux <- sapply(name_columns,FUN = fn)
             aic <- min(aic_aux,na.rm = TRUE)
+            print(aic)
             variable_selected <- which(aic_aux == aic)[1]
             model_selected <- name_columns[variable_selected]
             name_columns <- name_columns[-variable_selected]
@@ -546,16 +562,93 @@ best_dlm <- function(df,station){
             }
         }
     }
-    return(paste(model_selected,aic,collapse = "+",sep = " "))
+    model_selected <- paste(model_selected,collapse = "+")
+    return(paste(model_selected,aic,sep = " "))
 }
 
 df_adjustements <- data.frame("Station"=character(),"Model_MLE"=character())
+
 for(i in 1:length(stations)){
     df_adjustements[i,1] <- stations[i]
     df_station <- data%>%filter(station == stations[i])
     df_adjustements[i,2] <- best_dlm(df_station,stations[i])
+    print(best_dlm(df_station,stations[i]))
+}
+df_adjustements[,1] <- stations
+df_adjustements <- df_adjustements%>%separate(Model_MLE, c("Modelo","AIC"),sep = " ")
+print(xtable(df_adjustements, type = "latex", tabular.environment="longtable"),
+    include.rownames=FALSE, file = "ajustes.tex")
+#We are going to forecast with the model
+#We note that all the models select as best model the model with the pressure
+#We do one step a head forecast
+stations_original <- stations
+stations <- stations_original
+df_forecast <- data.frame("Date" =character(), "Real" = numeric(), "Forecast" = numeric(),"station" = character())
+dlms_filtered <- list()
+
+tail(df_forecast)
+stations <-stations[!(stations %in% c("Dingling","Nongzhanguan"))] #These were not adjusted because generates problems
+#stations <- stations[stations!="Dongsi"]
+#We detected that with SO2 the give problem so we discarded this variables
+for(i in 1:length(stations)){
+    df_station <- data%>%filter(station == stations[i])
+    df_station <- diff_variables(df_station)
+    df_for_forecast <- df_station
+    #df_for_forecast <- df_station[-seq(nrow(df_station)-9, nrow(df_station), by = 1),]
+    variables <- df_adjustements$Modelo[df_adjustements$Station == stations[i]]
+    print(variables)
+    variables <- unlist(strsplit(variables,split = "+",fixed = TRUE))
+    variables <- variables[variables != "diff_SO2"]
+    print(variables)
+    variables <- df_for_forecast%>%select(variables)
+    print(head(variables))
+    print(tail(df_forecast))
+    build_model <- function (u){
+        u <- exp(u)
+        dlmModReg(variables, dV = u[1],dW = u[2:length(u)])
+    }
+    
+
+    
+    #outMLE <- dlmMLE(df_for_forecast$diff_PM2.5,parm =c(mean(df_for_forecast$diff_PM2.5,na.rm = TRUE),colMeans(variables,na.rm = TRUE),1),build_model)
+    outMLE <- dlmMLE(df_for_forecast$diff_PM2.5,parm =rep(0,ncol(variables)+2),build_model)
+    model_builded <- build_model(outMLE$par)
+    dlm_filtered <- dlmFilter(df_for_forecast$diff_PM2.5,model_builded)
+    dlms_filtered <- append(dlms_filtered,dlm_filtered)
+    df_aux <- data.frame("Date" = df_station$Date, "Real" = df_station$diff_PM2.5, "Forecast" = dlm_filtered$f,"station" = rep(stations[i],nrow(df_station)))
+    df_forecast <-   rbind(df_forecast,df_aux)
+            
+}
+
+
+
+
+head(df_forecast)
+
+
+write.csv(file = "adjust_1.csv",df_forecast)
+```
+
+We proceed to graph the models and predictions
+```{r}
+#We are going to plot by station
+library(scales)
+
+df_forecast <- df_forecast%>%gather(key = "Tipo",value = "Valor", 2:3)
+sum(is.na(df_forecast$Valor))
+cbbPalette <- c("#000000", "#E69F00")
+
+for(i in stations){
+    ggsave(filename=paste("times_serie_2","_",i,".pdf",sep=""),df_forecast%>%filter(station== i)%>%ggplot(aes(x=Date,y=Valor, color = Tipo))+geom_line(alpha=0.7)+scale_color_brewer(palette="Set1")+scale_x_date(date_labels = "%Y")+ylab("Diferencia logPM2.5")+ggtitle(i)+xlab("Fecha")+theme_minimal()+theme(text=element_text(size=24)),width=20,height=5)
+}
+
+tail(df_forecast,15)
+df_10_last_days <- df_forecast%>%filter(Date>"2017-02-19")
+for(i in stations){
+    ggsave(filename=paste("times_serie_10_last_days","_",i,".pdf",sep=""),df_10_last_days%>%filter(station== i)%>%ggplot(aes(x=Date,y=Valor, color = Tipo))+geom_line(alpha=0.7)+scale_color_brewer(palette="Set1")+ylab("Diferencia logPM2.5")+ggtitle(i)+xlab("Fecha")+theme_minimal()+theme(text=element_text(size=24)),width=20,height=5)
 }
 
 
 ```
+We proceed to check the 
 
