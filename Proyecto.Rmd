@@ -510,10 +510,12 @@ diff_variables <- function(df,station){
         df[is.na(df)]<- NA
         df[] <- lapply(df, function(i) if(is.numeric(i)) ifelse(is.infinite(i), NA, i) else i)
         df[] <- lapply(df, function(i) if(is.numeric(i)) ifelse(is.infinite(-i), NA, i) else i)
-        return(df)
+        return(df[-1,])
 
         
 }
+
+#Using AIC
 best_dlm <- function(df,station){
     df <- diff_variables(df,station)
     name_columns <- colnames(df)
@@ -522,7 +524,7 @@ best_dlm <- function(df,station){
     name_columns <- colnames(df)
     #df_for_forecast <- df[-seq(nrow(df)-9,nrow(df),by=1),name_columns!="diff_PM2.5"]
 
-    df_for_forecast <- df[,name_columns!="diff_PM2.5"]
+    df_for_forecast <- df[,!(name_columns%in%c("diff_PM2.5"))]
     print(head(df_for_forecast))
     #df_for_forecast <- df
     n_columns <- ncol(df_for_forecast)
@@ -566,6 +568,14 @@ best_dlm <- function(df,station){
     return(paste(model_selected,aic,sep = " "))
 }
 
+
+
+
+
+
+
+
+
 df_adjustements <- data.frame("Station"=character(),"Model_MLE"=character())
 
 for(i in 1:length(stations)){
@@ -583,8 +593,8 @@ print(xtable(df_adjustements, type = "latex", tabular.environment="longtable"),
 #We do one step a head forecast
 stations_original <- stations
 stations <- stations_original
-df_forecast <- data.frame("Date" =character(), "Real" = numeric(), "Forecast" = numeric(),"station" = character())
-dlms_filtered <- list()
+df_forecast <- data.frame("Date" =character(), "Real" = numeric(), "Forecast" = numeric(),"Superior" = numeric(),"Inferior" = numeric(),"station" = character())
+
 
 tail(df_forecast)
 stations <-stations[!(stations %in% c("Dingling","Nongzhanguan"))] #These were not adjusted because generates problems
@@ -614,8 +624,15 @@ for(i in 1:length(stations)){
     outMLE <- dlmMLE(df_for_forecast$diff_PM2.5,parm =rep(0,ncol(variables)+2),build_model)
     model_builded <- build_model(outMLE$par)
     dlm_filtered <- dlmFilter(df_for_forecast$diff_PM2.5,model_builded)
-    dlms_filtered <- append(dlms_filtered,dlm_filtered)
-    df_aux <- data.frame("Date" = df_station$Date, "Real" = df_station$diff_PM2.5, "Forecast" = dlm_filtered$f,"station" = rep(stations[i],nrow(df_station)))
+    assign(paste("dlm_filtered",i,sep = "_"),dlm_filtered)
+    conf <- unlist(dlmSvd2var(dlm_filtered$U.C,dlm_filtered$D.C))[-1]
+    sdev <- residuals(dlm_filtered)$sd
+    filtered <- dlm_filtered$f
+    superior <-filtered+qnorm(0.025)*sdev
+    inferior <-filtered-qnorm(0.025)*sdev
+
+    df_aux <- data.frame("Date" = df_station$Date, "Real" = df_station$diff_PM2.5, "Forecast" = filtered,"Superior"=superior,"Inferior"=inferior,"station" = rep(stations[i],nrow(df_station)))
+    #df_aux <- data.frame("Date" = df_station$Date, "Real" = df_station$diff_PM2.5, "Forecast" = dropFirst(dlm_filtered$m),"station" = rep(stations[i],nrow(df_station)))
     df_forecast <-   rbind(df_forecast,df_aux)
             
 }
@@ -635,20 +652,50 @@ We proceed to graph the models and predictions
 library(scales)
 
 df_forecast <- df_forecast%>%gather(key = "Tipo",value = "Valor", 2:3)
+df_forecast$Date <- as.Date(paste(df_forecast$Date,"1",sep = "-"))
 sum(is.na(df_forecast$Valor))
 cbbPalette <- c("#000000", "#E69F00")
 
 for(i in stations){
-    ggsave(filename=paste("times_serie_2","_",i,".pdf",sep=""),df_forecast%>%filter(station== i)%>%ggplot(aes(x=Date,y=Valor, color = Tipo))+geom_line(alpha=0.7)+scale_color_brewer(palette="Set1")+scale_x_date(date_labels = "%Y")+ylab("Diferencia logPM2.5")+ggtitle(i)+xlab("Fecha")+theme_minimal()+theme(text=element_text(size=24)),width=20,height=5)
+    ggsave(filename=paste("times_serie_2","_",i,".pdf",sep=""),df_forecast%>%filter(station== i)%>%ggplot(aes(x=Date,y=Valor, color = Tipo))+geom_line(alpha=0.7)+scale_x_date(date_labels = "%Y-%m")+scale_color_brewer(palette="Set1")+ylab("Diferencia logPM2.5")+ggtitle(i)+xlab("Fecha")+theme_minimal()+theme(text=element_text(size=24)),width=20,height=5)
 }
 
 tail(df_forecast,15)
 df_10_last_days <- df_forecast%>%filter(Date>"2017-02-19")
 for(i in stations){
-    ggsave(filename=paste("times_serie_10_last_days","_",i,".pdf",sep=""),df_10_last_days%>%filter(station== i)%>%ggplot(aes(x=Date,y=Valor, color = Tipo))+geom_line(alpha=0.7)+scale_color_brewer(palette="Set1")+ylab("Diferencia logPM2.5")+ggtitle(i)+xlab("Fecha")+theme_minimal()+theme(text=element_text(size=24)),width=20,height=5)
+    ggsave(filename=paste("times_serie_10_last_days","_",i,".pdf",sep=""),df_10_last_days%>%filter(station== i)%>%ggplot(aes(x=Date))+geom_ribbon(aes(ymin=Inferior,ymax=Superior,fill="Intervalo de predicción 95%"),alpha = 0.3)+geom_line(aes(y=Valor, color = Tipo))+scale_color_brewer(palette="Set1")+scale_fill_manual(values =  "grey70",name ="")+ylab("Diferencia logPM2.5")+ggtitle(i)+xlab("Fecha")+theme_minimal()+theme(text=element_text(size=24)),width=20,height=5)
 }
 
 
 ```
-We proceed to check the 
 
+
+We proceed to check the hypothesis
+
+```{r}
+stations<- unique(df_forecast$station)
+for(i in 1:length(stations)){
+    pdf(paste("qqplot",stations[i],".pdf",sep = ""))
+qqnorm(residuals(get(paste("dlm_filtered",i,sep="_")),sd=FALSE))
+qqline(residuals(get(paste("dlm_filtered",i,sep="_")),sd=FALSE))
+dev.off()
+}
+
+tsdiag(dlm_filtered_2)
+```
+
+```{r}
+
+df_MSE <- data.frame("Estación"=character(),"MSE" = numeric())
+for(i in 1:length(stations)){
+    df_aux <- df_forecast%>%filter(station == stations[i])
+    valor_real <- df_aux%>%filter(Tipo == "Real")
+    valor_forecast <- df_aux%>%filter(Tipo == "Forecast")
+    MSE <- mean((valor_forecast$Valor-valor_real$Valor)^2,na.rm=TRUE)
+    df_MSE_aux <- data.frame("Estación"=stations[i],"MSE" = MSE)
+    df_MSE <- rbind(df_MSE,df_MSE_aux)
+}
+
+print(xtable(df_MSE, type = "latex", tabular.environment="longtable"),
+    include.rownames=FALSE, file = "MSE.tex")
+```
