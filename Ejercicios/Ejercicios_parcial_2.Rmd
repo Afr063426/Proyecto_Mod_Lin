@@ -1,0 +1,167 @@
+ 
+
+
+# Chapter 1
+Exercise 2
+
+```{r}
+#a
+s <- c(rep(0,100),10*exp(-(1:100)/20)*cos(2*pi*1:100/4))
+x <- s+rnorm(200)
+
+#b 
+s_b <- c(rep(0,100),10*exp(-(1:100)/200)*cos(2*pi*1:100/4))
+x_b <- s_b+rnorm(200)
+plot.ts(x) #Explosion
+plot.ts(x_b) #Earthquake
+
+
+plot(exp(-c(0:100)/20),type='l',col='red')
+
+lines(exp(-c(0:100)/200),type='l',col='blue')
+
+```
+We find that the line of $\exp{\left(-t/200\right)}$ decrease slower. But given the slower 
+decrease it shows less aperature.
+
+
+Exercise 3
+
+```{r}
+w_3 <- rnorm(110,0,1)
+x_3 <- filter(w_3,filter  =c(0,-0.9),method = "recursive")[-c(1:10)]
+v_3 <- filter(x_3,rep(1/4,4),side = 1)
+plot.ts(x_3,main="autoregression",type="l")
+lines(v_3,type="l",lty=2,col="blue")
+```
+
+
+```{r}
+x_3.b <- cos(2*pi*1:100/4)
+x_3.c <- cos(2*pi*1:100/4)+rnorm(100)
+v_3.c <- filter(x_3.c,rep(1/4,4),side = 1)
+v_3.b<- filter(x_3.b,rep(1/4,4),side = 1)
+
+plot.ts(x_3.b,main = "autoregression",type = "l")
+lines(v_3.b,type = "l", lty=2, col="blue")
+plot.ts(x_3.c,main = "autoregression",type = "l")
+lines(v_3.c,type = "l", lty=2, col="blue")
+
+
+
+```
+
+
+ 2.8, 2.10, 3.22, 3.34, 3.35, 3.42, 4.10, 4.15.
+
+
+Exercise 2.8 
+
+```{r}
+
+library(astsa)
+data(varve)
+varve_split <- split(varve,f = c('A','B')) #We split the data in two
+(variance_A <- (sd(varve_split$A))^2)
+(variance_B <- (sd(varve_split$B))^2) 
+logvarve <- log(varve)
+logvarve_split <- split(logvarve,f = c('logA','logB')) 
+(variance_logA <- (sd(logvarve_split$logA))^2)
+(variance_logB <- (sd(logvarve_split$logB))^2)
+```
+We notice that after applying the log transformation the variance is closer, it doesn't happen before.
+
+```{r}
+#We plot the histograms
+hist(varve)
+hist(logvarve)
+
+```
+
+After applying the transformation we have a graph that is a little bit symmetric.
+
+```{r}
+#We plot the data of logvarve
+plot.ts(logvarve)
+acf(logvarve)
+
+```
+
+We see I a low drecreasing of the ACF. It is an indication that the serie is not stationary.
+
+
+```{r}
+#First differnce
+diff_logvarve <- diff(logvarve)
+plot.ts(diff_logvarve)
+acf(diff_logvarve)
+```
+
+It shows a better behavior as a stationary serie. Because the ACF cutt off
+in lag 1.
+We can say that it is a rate of change by day of the varve. 
+
+A random walk with a drift 
+
+
+For justify the part e what we can do 
+is estimate the ACF theoric of the model
+and watch that the variance is approximately 
+the empiric value.
+
+Exercise 2.10
+```{r}
+data(oil)
+data(gas)
+ts.plot(oil, gas, col =1:2)# To plot in the same graph
+
+```
+
+Both look more like a random walk with drift.
+
+They are not stationary it looks like there are tendency component, and also it appear that autocovariance
+function will depend on the time.
+
+a.
+```{r}
+acf(oil)
+acf(gas)
+
+```
+
+b.
+Both decrease slowly. If we apply the log difference it can be instrepeter as the proportion of change or the returns.
+
+
+c.
+```{r}
+logoil_diff <- diff(log(oil))
+loggas_diff <- diff(log(gas))
+ts.plot(logoil_diff,loggas_diff,col = 1:2)
+```
+We have controlled the variance and the tendency. They look stationary.
+
+
+```{r}
+acf(logoil_diff)
+acf(loggas_diff)
+```
+They still have a little autocorrelation. We can notice it because the autocorrelation in the lags.
+
+
+
+d. 
+We can watch a high cross relation in the lag 0.
+```{r}
+ccf(loggas_diff,logoil_diff)
+ccf(logoil_diff,loggas_diff)
+```
+
+There is a high cross correlation in lag 0.
+
+```{r}
+lag2.plot(logoil_diff,loggas_diff,3)
+
+plot(logoil_diff,loggas_diff)
+lines(lowess(logoil_diff,loggas_diff))#Trying to do it by hand
+```
