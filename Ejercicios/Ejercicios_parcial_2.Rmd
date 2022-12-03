@@ -1,5 +1,10 @@
  
 
+ ## Packages 
+```{r}
+library(astsa)
+library(tidyverse)
+```
 
 # Chapter 1
 Exercise 2
@@ -59,7 +64,7 @@ Exercise 2.8
 
 ```{r}
 
-library(astsa)
+
 data(varve)
 varve_split <- split(varve,f = c('A','B')) #We split the data in two
 (variance_A <- (sd(varve_split$A))^2)
@@ -159,9 +164,225 @@ ccf(logoil_diff,loggas_diff)
 
 There is a high cross correlation in lag 0.
 
+
+e.
 ```{r}
 lag2.plot(logoil_diff,loggas_diff,3)
 
-plot(logoil_diff,loggas_diff)
-lines(lowess(logoil_diff,loggas_diff))#Trying to do it by hand
+
+#What lag2.plot does is this
+plot(logoil_diff[-length(logoil_diff)],loggas_diff[-1])
+lines(lowess(logoil_diff[-length(logoil_diff)],loggas_diff[-1]))
+
+```
+
+The relation looks linear.
+
+f.
+```{r}
+I <- logoil_diff>=0
+merge <- ts.intersect(loggas_diff,logoil_diff,logoil_diff_lag = lag(logoil_diff,-1),I)
+fit_oil_gas <- lm(loggas_diff~logoil_diff+logoil_diff_lag+I, data =merge)
+summary(fit_oil_gas)
+```
+All look as to be significant except the intercept. 
+
+When there is an negative growth of the price of oil there is a negative increase in the
+gas price in 0.68. There will be steady. 
+
+
+
+Analyze of the residuals
+```{r}
+resid_2_10 <- residuals(fit_oil_gas)
+plot(resid_2_10)
+acf(resid_2_10)
+```
+
+The adjust is not bad, except by the outliers.
+
+
+Exercise 3.22
+
+```{r}
+phi <- 0.9
+generating_observations <- arima.sim(n = 50,list(ar = phi),n.start = 50)
+yw_fit <- ar.yw(generating_observations,order = 1)
+hist(generating_observations)
+nboot <- 200
+residuals_generated <- yw_fit$resid[-1]
+x_star <- generating_observations
+phi_star <- rep(NA,nboot)
+
+for(i in 1:nboot){
+    resid_star <- sample(residuals_generated, replace = TRUE)
+    for(j in 1:49){
+        x_star[j+1] <- phi*x_star[j] + resid_star[j]
+    }
+    phi_star[j] <- ar.yw(x_star,order = 1)$ar
+}
+summary(phi_star)
+```
+
+
+Exercise 3.34
+```{r}
+data(so2)
+ts.plot(so2)
+acf2(so2)
+```
+
+We can se that the model is not a stationary. There is a a little of tendency, we are going to the the first difference and 
+there is a lot of correlation.
+
+```{r}
+diff_so2 <- diff(so2)
+
+ts.plot(diff_so2)
+acf(diff_so2)
+pacf(diff_so2)
+
+```
+
+After that we control the tendency and there is still a little of correlation. We are going to apply
+log transformation and first difference
+
+```{r}
+diff_logso2 <- diff(log(so2))
+
+ts.plot(diff_logso2)
+acf(diff_logso2)
+pacf(diff_logso2)
+
+acf2(diff_logso2)
+```
+We can see that the difference is not a lot, so we are going only to take first difference without log transformation.
+
+```{r}
+
+ts.plot(diff_so2)
+acf(diff_so2)
+pacf(diff_so2)
+```
+
+
+We propose that in the acf the tail tail off after lag 1 in both models we have so an ARIMA(1,1,1), and ARIMA(0,1,1).
+```{r}
+#We fit the model
+model_AR_011 <-sarima(so2,0,1,1)
+model_AR_011$AIC
+model_AR_011$BIC
+```
+
+We can see that residulas don't show a a pattern, and also we can say that there is
+independece in the residuals. There are a various outliers. With the Ljung Box 
+we notice that could be the model doesn't fit well.
+
+```{r}
+#We fit the model
+model_complete <-sarima(so2,1,1,1)
+model_complete$AIC
+model_complete$BIC
+```
+We can see that with complete model there is a little bit of improvement in the Q test, but there is not
+plenty improvement. The behavior is similar to the modelo ARIMA(0,1,1), and we see that the 
+acf is worse.
+
+
+```{r}
+#We fit the model
+modellog_AR_011 <-sarima(log(so2),0,1,1)
+modellog_AR_011$AIC
+modellog_AR_011$BIC
+```
+There is an improvement in the outliers, but in the Q test it is a little worse.
+
+```{r}
+#We fit the model
+modellog_AR_111 <-sarima(log(so2),1,1,1)
+modellog_AR_111$AIC
+modellog_AR_111$BIC
+```
+
+
+We can select the log transformation and the model that have the AIC, and BIC lower. So,
+we select the ARIMA(0,1,1)
+
+
+Exercise 3.35
+a.
+```{r}
+data(sales)
+data(lead)
+```
+
+
+```{r}
+ts.plot(sales)
+acf(sales)
+pacf(sales)
+acf2(sales)
+```
+
+We can see a cutt of in the PACF, but we have problems with the decreasing of the ACF.
+We are going to take first difference. Also there is a lot of trend.
+```{r}
+ts.plot(diff(sales))
+acf2(diff(sales))
+
+```
+After the application of the first difference we have an improvement in the trend, and
+also it appears to be stationary. 
+We can see that both are taling off after the lag 1 both tail off. There aren't not cutoff.
+So we fit and SARIMA(1,1,1)
+
+```{r}
+model_SARIMA_111_3_35 <- sarima(sales,1,1,1)
+sarima(sales,0,1,1)
+sarima(sales,1,1,0)
+
+```
+
+We can see that the model fits very well, and the others fit very bad so we select the SARIMA(1,1,1).
+
+
+b.
+```{r}
+#We do the cff
+ccf2(diff(lead),diff(sales))
+lag2.plot(diff(lead),diff(sales),max.lag = 3)
+```
+
+We can see that both indicate that a regresion between $\nabla$sales, and $\nabla^{3} lead$ 
+could be a good fit.
+```{r}
+#We do the intersection
+sales_lead <- ts.intersect(sales, leadL3 = stats::lag(lead,-3),dframe = TRUE)
+summary(regression_3_35 <- lm(sales ~ leadL3, data = sales_lead,na.action = NULL))
+
+```
+We can see that all the variables are significant. 
+
+```{r}
+#We plot the residuals
+ts.plot(resid(regression_3_35))
+
+```
+
+It doesn't look like a white noise so we are going to fit an ARMA to the variable
+```{r}
+acf2(resid(regression_3_35))
+
+```
+
+There is a tail off in both so we select and ARMA(1,0) because we notice that there is a 
+tail off in the ACF, and a cut off after lag 1.
+
+```{r}
+
+ds <- sales_lead[,1]
+dl3 <- sales_lead[,2]
+fit_final_3_35 <- model_sarima_regression_11_3_35 <- sarima(ds,1,0,0, xreg = dl3)
+plot(resid(fit_final_3_35$fit))
+acf2(resid(fit_final_3_35$fit))
 ```
