@@ -405,6 +405,28 @@ It looks like stationary and we have controlled the trend.
 
 ```{r}
 acf2(diff_UnempRate)
+diff_12 <- diff(diff_UnempRate,12)
+ts.plot(diff_12)
+acf2(diff_12)
 ```
 
-We can see that cut off every 12 months in the ACF and in the PACF tails off
+We can see that cut off every 12 months in the ACF and in the PACF tails off every 12 months. Also
+we have that ACF tail off after lag 2, but also we can say that there is a cutt off after lag 1.
+So we propose 3 models $ARMA(2,1,1)x(0,1,1)_12$, also we consider the model $ARMA(1,1,1)x(0,1,1)_12$
+
+```{r}
+sarima(UnempRate,2,1,0,0,1,1,12)
+sarima(UnempRate,1,1,0,0,1,1,12)
+sarima(UnempRate,2,1,1,0,1,1,12)
+```
+
+We can see from the last one is better that others so we select this model.
+
+```{r}
+sarima.for(UnempRate,12,2,1,1,0,1,1,12)
+```
+
+
+Exercise 4.10
+
+Exercise 
