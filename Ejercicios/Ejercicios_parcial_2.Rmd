@@ -386,3 +386,25 @@ fit_final_3_35 <- model_sarima_regression_11_3_35 <- sarima(ds,1,0,0, xreg = dl3
 plot(resid(fit_final_3_35$fit))
 acf2(resid(fit_final_3_35$fit))
 ```
+
+
+Exercise 3.42
+```{r}
+data(UnempRate)
+ts.plot(UnempRate)
+```
+
+It doesn't look stationary, we are going to take first difference.
+
+```{r}
+diff_UnempRate <- diff(UnempRate)
+ts.plot(diff_UnempRate)
+```
+
+It looks like stationary and we have controlled the trend.
+
+```{r}
+acf2(diff_UnempRate)
+```
+
+We can see that cut off every 12 months in the ACF and in the PACF tails off
