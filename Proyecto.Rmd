@@ -60,16 +60,15 @@ options(scipen = 999, digits = 5)
 #-----------------------------------------
 #We read the documento
 data <- read.csv("datos.csv")
-data_means <- read.csv("datos.csv")
+data_means <- read.csv("data_means.csv")
 
 data<-data[-c(1,2)]
 data<-cbind("Fecha"=dmy(paste(data$day,data$month,data$year)), data)
 
-data_means<-data_means[-c(1,2)]
-data_means<-cbind("Fecha"=dmy(paste(data$day,data$month,data$year)), data_means)
+
+data_means$Date<-as.Date(data_means$Date,format="%Y-%m-%d")
 
 
-data_means<-data_means%>%select(-c(day,month,year))
 data_means$wd<-as.factor(data_means$wd)
 data_means$station<-as.factor(data_means$station)
 
@@ -373,6 +372,41 @@ library(paletteer)
 
 paletteer_d("rcartocolor::Bold")
 
+data_means_mes_ano<- cbind(data_means, "mes_ano" =format(data_means$Date, "%m %Y"))
+
+data_means_mes_ano$mes_ano<-as.character(data_means_mes_ano$mes_ano)
+
+
+
+data_means_mes_ano <- data_means_mes_ano%>%group_by(station, mes_ano)%>%summarise(
+                "PM2.5"=mean(PM2.5,na.rm=TRUE),
+                "SO2"=mean(SO2,na.rm=TRUE),
+                "NO2"=mean(NO2,na.rm=TRUE),
+                "CO"=mean(CO,na.rm=TRUE),
+                "O3"=mean(O3,na.rm=TRUE),
+                "TEMP"=mean(TEMP,na.rm=TRUE),
+                "PRES"=mean(PRES,na.rm=TRUE),
+                "DEWP"=mean(DEWP,na.rm=TRUE),
+                "RAIN"=mean(RAIN,na.rm=TRUE),
+                "WSPM"=mean(WSPM,na.rm=TRUE))
+data_means_mes_ano[is.na(data_means_mes_ano)]<-NA
+data_means_mes_ano$station<-as.factor(data_means_mes_ano$station)
+
+
+data_means_mes_ano[data_means_mes_ano$station=="Aotizhongxin",]%>%ggplot(aes(x=mes_ano, y=PM2.5,group =1))+geom_point()+geom_line()+scale_x_discrete(labels = abbreviate)+theme(axis.text = element_text(angle = 45))
+
+
+data_means_mes_ano$mes_ano<-as.numeric(as.factor(data_means_mes_ano$mes_ano))
+data_means_mes_ano$mes_ano<-c(rep(1:12, 4*12))
+
+data_means_mes_ano$mes_ano<-as.factor(data_means_mes_ano$mes_ano)
+data_means_mes_ano[data_means_mes_ano$station=="Aotizhongxin",]%>%ggplot(aes(x=mes_ano, y=PM2.5,group =mes_ano, color=mes_ano))+geom_bar(stat="identity", position="dodge")
+
+
+
+
+
+plot(x=as.factor(data_means_mes_ano[data_means_mes_ano$station=="Aotizhongxin",]$mes_ano), y=data_means_mes_ano[data_means_mes_ano$station=="Aotizhongxin",]$PM2.5)
 
 ```
 
